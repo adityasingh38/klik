@@ -232,11 +232,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 - [ ] **Step 9: Write `src/renderer/src/App.tsx` (placeholder, replaced in Task 12)**
 
 ```tsx
+import React from 'react'
 import { VStack } from '@astryxdesign/core/VStack'
 import { Heading } from '@astryxdesign/core/Heading'
 import { Text } from '@astryxdesign/core/Text'
 
-export default function App(): JSX.Element {
+export default function App(): React.JSX.Element {
   return (
     <VStack gap={2} width="100%">
       <Heading level={1}>Klik</Heading>
@@ -2079,7 +2080,7 @@ export const klikApi = window.klik
 - [ ] **Step 2: Write `src/renderer/src/components/ServerListView.tsx`**
 
 ```tsx
-import { useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { VStack } from '@astryxdesign/core/VStack'
 import { HStack } from '@astryxdesign/core/HStack'
 import { Toolbar } from '@astryxdesign/core/Toolbar'
@@ -2103,7 +2104,7 @@ interface ServerListViewProps {
   isInstalling: boolean
 }
 
-export function ServerListView(props: ServerListViewProps): JSX.Element {
+export function ServerListView(props: ServerListViewProps): React.JSX.Element {
   const {
     servers,
     clients,
@@ -2226,7 +2227,7 @@ git commit -m "feat: add renderer server list view with search, client toggle, a
 - [ ] **Step 1: Write `src/renderer/src/components/SecretPromptDialog.tsx`**
 
 ```tsx
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
 import { Layout, LayoutContent, LayoutFooter } from '@astryxdesign/core/Layout'
 import { VStack } from '@astryxdesign/core/VStack'
@@ -2241,7 +2242,7 @@ interface SecretPromptDialogProps {
   onCancel: () => void
 }
 
-export function SecretPromptDialog(props: SecretPromptDialogProps): JSX.Element {
+export function SecretPromptDialog(props: SecretPromptDialogProps): React.JSX.Element {
   const { server, onSubmit, onCancel } = props
   const [values, setValues] = useState<Record<string, string>>({})
 
@@ -2295,6 +2296,7 @@ export function SecretPromptDialog(props: SecretPromptDialogProps): JSX.Element 
 - [ ] **Step 2: Write `src/renderer/src/components/InstallProgressView.tsx`**
 
 ```tsx
+import React from 'react'
 import { VStack } from '@astryxdesign/core/VStack'
 import { HStack } from '@astryxdesign/core/HStack'
 import { ProgressBar } from '@astryxdesign/core/ProgressBar'
@@ -2310,7 +2312,7 @@ interface InstallProgressViewProps {
   onDone: () => void
 }
 
-export function InstallProgressView(props: InstallProgressViewProps): JSX.Element {
+export function InstallProgressView(props: InstallProgressViewProps): React.JSX.Element {
   const { results, isInstalling, onDone } = props
   const doneCount = results.filter((r) => r.status === 'done').length
   const total = results.length
@@ -2351,7 +2353,7 @@ export function InstallProgressView(props: InstallProgressViewProps): JSX.Elemen
 - [ ] **Step 3: Replace `src/renderer/src/App.tsx`**
 
 ```tsx
-import { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { VStack } from '@astryxdesign/core/VStack'
 import { Heading } from '@astryxdesign/core/Heading'
 import { klikApi } from './api/klikApi'
@@ -2362,7 +2364,7 @@ import type { ClientId, ClientInfo, InstallStepResult, MergedServerEntry } from 
 
 type ViewMode = 'list' | 'secrets' | 'progress'
 
-export default function App(): JSX.Element {
+export default function App(): React.JSX.Element {
   const [servers, setServers] = useState<MergedServerEntry[]>([])
   const [clients, setClients] = useState<ClientInfo[]>([])
   const [selectedServerIds, setSelectedServerIds] = useState<string[]>([])
