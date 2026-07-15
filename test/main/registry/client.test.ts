@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { loadRegistry, normalizeRawServer, cachePath } from '../../../src/main/registry/client'
@@ -161,5 +161,91 @@ describe('loadRegistry', () => {
 
     expect(result.entries).toEqual([])
     expect(result.fromCache).toBe(false)
+  })
+
+  it('does not hang on a repeating/non-terminating cursor and falls back to cache', async () => {
+    // Every page returns a cursor, so naive `do { } while (cursor)` loops forever.
+    const fetchMock = vi.fn().mockImplementation(async () =>
+      page(
+        [
+          {
+            server: {
+              name: 'ai.example/loop',
+              description: 'd',
+              version: '1.0.0',
+              packages: [{ registryType: 'npm', identifier: 'loop', version: '1.0.0', transport: { type: 'stdio' } }]
+            },
+            _meta: { 'io.modelcontextprotocol.registry/official': { isLatest: true } }
+          }
+        ],
+        'same-cursor-forever'
+      )
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const cached = [
+      {
+        id: 'cached-entry',
+        title: 'x',
+        description: 'x',
+        version: '1.0.0',
+        transport: 'stdio',
+        requiredRuntime: [],
+        requiredEnv: []
+      }
+    ]
+    mkdirSync(tmpDir, { recursive: true })
+    writeFileSync(cachePath(tmpDir), JSON.stringify(cached))
+
+    const result = await loadRegistry(tmpDir)
+
+    // Must terminate (bounded by MAX_PAGES) and fall back to cache, same as any other fetch failure.
+    expect(result.fromCache).toBe(true)
+    expect(result.entries).toEqual(cached)
+    expect(fetchMock.mock.calls.length).toBeLessThan(1000)
+  }, 10000)
+
+  it('does not overwrite an existing cache when a fetch succeeds with zero latest entries', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce(
+        page(
+          [
+            {
+              server: {
+                name: 'ai.example/stale',
+                description: 'd',
+                version: '1.0.0',
+                packages: [{ registryType: 'npm', identifier: 'stale', version: '1.0.0', transport: { type: 'stdio' } }]
+              },
+              // Not latest -> normalization yields zero entries even though the fetch succeeded.
+              _meta: { 'io.modelcontextprotocol.registry/official': { isLatest: false } }
+            }
+          ]
+        )
+      )
+    )
+
+    const cached = [
+      {
+        id: 'cached-entry',
+        title: 'x',
+        description: 'x',
+        version: '1.0.0',
+        transport: 'stdio',
+        requiredRuntime: [],
+        requiredEnv: []
+      }
+    ]
+    mkdirSync(tmpDir, { recursive: true })
+    writeFileSync(cachePath(tmpDir), JSON.stringify(cached))
+
+    const result = await loadRegistry(tmpDir)
+
+    expect(result.fromCache).toBe(false)
+    expect(result.entries).toEqual([])
+
+    const onDisk = JSON.parse(readFileSync(cachePath(tmpDir), 'utf-8'))
+    expect(onDisk).toEqual(cached)
   })
 })

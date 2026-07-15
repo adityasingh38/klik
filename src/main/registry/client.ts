@@ -4,6 +4,7 @@ import type { RegistryEnvVar, RegistryServerEntry, RuntimeKind } from '../../sha
 
 const REGISTRY_BASE_URL = 'https://registry.modelcontextprotocol.io/v0/servers'
 const PAGE_LIMIT = 100
+const MAX_PAGES = 500
 
 interface RawPackage {
   registryType: string
@@ -108,8 +109,12 @@ export function normalizeRawServer(raw: RawServer): RegistryServerEntry | null {
 async function fetchAllPages(): Promise<RawEntry[]> {
   const all: RawEntry[] = []
   let cursor: string | undefined
+  let pageCount = 0
 
   do {
+    if (pageCount >= MAX_PAGES) {
+      throw new Error(`registry pagination exceeded MAX_PAGES (${MAX_PAGES}) — possible non-terminating cursor`)
+    }
     const url = new URL(REGISTRY_BASE_URL)
     url.searchParams.set('limit', String(PAGE_LIMIT))
     if (cursor) url.searchParams.set('cursor', cursor)
@@ -119,6 +124,7 @@ async function fetchAllPages(): Promise<RawEntry[]> {
     const data = (await response.json()) as RawResponse
     all.push(...data.servers)
     cursor = data.metadata.nextCursor
+    pageCount++
   } while (cursor)
 
   return all
@@ -158,7 +164,9 @@ export async function loadRegistry(userDataDir: string): Promise<RegistryLoadRes
     const entries = latestOnly
       .map((e) => normalizeRawServer(e.server))
       .filter((e): e is RegistryServerEntry => e !== null)
-    writeCache(userDataDir, entries)
+    if (entries.length > 0) {
+      writeCache(userDataDir, entries)
+    }
     return { entries, fromCache: false }
   } catch {
     const cached = readCache(userDataDir)
