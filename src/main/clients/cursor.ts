@@ -13,6 +13,7 @@ export const cursorAdapter = createConfigFileAdapter({
   id: 'cursor',
   displayName: 'Cursor',
   serversKey: 'mcpServers',
+  supportsHttpTransport: true,
   resolveExePath: () => join(localAppDataDir(), 'Programs', 'cursor', 'Cursor.exe'),
   resolveConfigPath: () => join(userProfileDir(), '.cursor', 'mcp.json')
 })

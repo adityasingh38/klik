@@ -24,6 +24,7 @@ describe('createConfigFileAdapter', () => {
       id: 'claude-desktop',
       displayName: 'Fake App',
       serversKey: 'mcpServers',
+      supportsHttpTransport: true,
       resolveExePath: () => exePath,
       resolveConfigPath: () => configPath
     })
@@ -83,5 +84,14 @@ describe('createConfigFileAdapter', () => {
     const written = JSON.parse(readFileSync(configPath, 'utf-8'))
     expect(written.mcpServers.toRemove).toBeUndefined()
     expect(written.mcpServers.keep).toBeDefined()
+  })
+
+  it('throws a clear error instead of a raw SyntaxError when the config file has invalid JSON', () => {
+    const adapter = makeAdapter()
+    mkdirSync(dirname(configPath), { recursive: true })
+    writeFileSync(configPath, '{ this is not valid json')
+
+    expect(() => adapter.readConfig()).toThrow(/not valid JSON/)
+    expect(() => adapter.readConfig()).not.toThrow(SyntaxError)
   })
 })

@@ -18,11 +18,16 @@ vi.mock('../../../src/main/deps/winget', () => ({
 import { isRuntimeAvailable, wingetPackageId } from '../../../src/main/deps/depCheck'
 import { wingetInstall } from '../../../src/main/deps/winget'
 
-function fakeAdapter(id: 'claude-desktop' | 'cursor', installed = true): ClientAdapter {
+function fakeAdapter(
+  id: 'claude-desktop' | 'cursor',
+  installed = true,
+  supportsHttpTransport = true
+): ClientAdapter {
   const store: Record<string, unknown> = {}
   return {
     id,
     displayName: id,
+    supportsHttpTransport,
     isInstalled: () => installed,
     getConfigPath: () => '/fake/path',
     readConfig: () => store as any,
@@ -236,7 +241,7 @@ describe('installServer', () => {
     expect(cursorAdapter.readConfig()).toEqual({})
   })
 
-  it('silently skips a runtime with no winget package id (e.g. docker) and still succeeds', async () => {
+  it('warns (but still succeeds) when a runtime has no winget package id (e.g. docker)', async () => {
     vi.mocked(isRuntimeAvailable).mockImplementation((runtime: string) => runtime !== 'docker')
     vi.mocked(wingetPackageId).mockImplementation((runtime: string) => (runtime === 'docker' ? null : 'Some.Package'))
     const dockerServer: MergedServerEntry = {
@@ -256,10 +261,50 @@ describe('installServer', () => {
       now: () => '2026-07-13T00:00:00.000Z'
     })
 
-    expect(results).toEqual([{ serverId: 'ai.example/foo', clientId: 'claude-desktop', status: 'done' }])
+    expect(results).toHaveLength(1)
+    expect(results[0].status).toBe('done')
+    expect(results[0].message).toMatch(/docker/i)
+    expect(results[0].message).toMatch(/not installed/i)
     expect(adapter.readConfig()).toMatchObject({
       'ai.example/foo': { command: 'npx', args: ['-y', 'foo@1.0.0'], env: { FOO_KEY: 'secret-value' } }
     })
+  })
+
+  it('reports an error and does not write when an http-transport server targets a client without HTTP support, while still succeeding for a client that supports it', async () => {
+    const httpServer: MergedServerEntry = {
+      ...baseServer,
+      transport: 'http',
+      command: undefined,
+      args: undefined,
+      url: 'https://example.com/mcp',
+      requiredRuntime: [],
+      requiredEnv: []
+    }
+    const request: InstallRequest = {
+      server: httpServer,
+      targetClients: ['claude-desktop', 'cursor'],
+      secrets: {}
+    }
+    const claudeAdapter = fakeAdapter('claude-desktop', true, false)
+    const cursorAdapter = fakeAdapter('cursor', true, true)
+    const claudeWriteSpy = vi.spyOn(claudeAdapter, 'writeServer')
+    const cursorWriteSpy = vi.spyOn(cursorAdapter, 'writeServer')
+
+    const results = await installServer(request, {
+      adaptersById: { 'claude-desktop': claudeAdapter, cursor: cursorAdapter } as any,
+      userDataDir: tmpDir,
+      now: () => '2026-07-13T00:00:00.000Z'
+    })
+
+    expect(results).toContainEqual({
+      serverId: 'ai.example/foo',
+      clientId: 'claude-desktop',
+      status: 'error',
+      message: 'claude-desktop does not support HTTP-transport MCP servers'
+    })
+    expect(results).toContainEqual({ serverId: 'ai.example/foo', clientId: 'cursor', status: 'done' })
+    expect(claudeWriteSpy).not.toHaveBeenCalled()
+    expect(cursorWriteSpy).toHaveBeenCalled()
   })
 })
 

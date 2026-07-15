@@ -53,10 +53,15 @@ export async function installServer(request: InstallRequest, deps: InstallerDeps
     return results
   }
 
+  const unmetRuntimeWarnings: string[] = []
+
   for (const runtime of request.server.requiredRuntime) {
     if (isRuntimeAvailable(runtime)) continue
     const packageId = wingetPackageId(runtime)
-    if (!packageId) continue
+    if (!packageId) {
+      unmetRuntimeWarnings.push(runtime)
+      continue
+    }
     const install = wingetInstall(packageId)
     if (!install.success) {
       for (const clientId of request.targetClients) {
@@ -74,15 +79,34 @@ export async function installServer(request: InstallRequest, deps: InstallerDeps
   const entry = buildConfigEntry(request)
   const succeededClients: ClientId[] = []
 
+  const runtimeWarningMessage =
+    unmetRuntimeWarnings.length > 0
+      ? `Installed, but requires ${unmetRuntimeWarnings.map((r) => r[0].toUpperCase() + r.slice(1)).join(', ')} which ${unmetRuntimeWarnings.length > 1 ? 'are' : 'is'} not installed — install ${unmetRuntimeWarnings.length > 1 ? 'them' : 'it'} manually for this server to run.`
+      : undefined
+
   for (const clientId of request.targetClients) {
     const adapter = deps.adaptersById[clientId]
     if (!adapter || !adapter.isInstalled()) {
       results.push({ serverId: request.server.id, clientId, status: 'error', message: `${clientId} is not installed` })
       continue
     }
+    if (request.server.transport === 'http' && !adapter.supportsHttpTransport) {
+      results.push({
+        serverId: request.server.id,
+        clientId,
+        status: 'error',
+        message: `${clientId} does not support HTTP-transport MCP servers`
+      })
+      continue
+    }
     try {
       adapter.writeServer(request.server.id, entry)
-      results.push({ serverId: request.server.id, clientId, status: 'done' })
+      results.push({
+        serverId: request.server.id,
+        clientId,
+        status: 'done',
+        ...(runtimeWarningMessage ? { message: runtimeWarningMessage } : {})
+      })
       succeededClients.push(clientId)
     } catch (error) {
       results.push({

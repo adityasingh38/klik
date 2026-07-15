@@ -10,6 +10,7 @@ export interface McpServerConfigEntry {
 export interface ClientAdapter {
   id: ClientId
   displayName: string
+  supportsHttpTransport: boolean
   isInstalled(): boolean
   getConfigPath(): string
   readConfig(): Record<string, McpServerConfigEntry>

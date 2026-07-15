@@ -13,6 +13,7 @@ export const claudeDesktopAdapter = createConfigFileAdapter({
   id: 'claude-desktop',
   displayName: 'Claude Desktop',
   serversKey: 'mcpServers',
+  supportsHttpTransport: false,
   resolveExePath: () => join(localAppDataDir(), 'AnthropicClaude', 'claude.exe'),
   resolveConfigPath: () => join(appDataDir(), 'Claude', 'claude_desktop_config.json')
 })

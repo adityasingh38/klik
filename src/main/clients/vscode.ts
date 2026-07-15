@@ -13,6 +13,7 @@ export const vscodeAdapter = createConfigFileAdapter({
   id: 'vscode',
   displayName: 'VS Code',
   serversKey: 'servers',
+  supportsHttpTransport: true,
   resolveExePath: () => join(localAppDataDir(), 'Programs', 'Microsoft VS Code', 'Code.exe'),
   resolveConfigPath: () => join(appDataDir(), 'Code', 'User', 'mcp.json')
 })
