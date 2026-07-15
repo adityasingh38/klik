@@ -1,10 +1,15 @@
 import React, { useState } from 'react'
-import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
-import { Layout, LayoutContent, LayoutFooter } from '@astryxdesign/core/Layout'
-import { VStack } from '@astryxdesign/core/VStack'
-import { HStack } from '@astryxdesign/core/HStack'
-import { TextInput } from '@astryxdesign/core/TextInput'
-import { Button } from '@astryxdesign/core/Button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import type { MergedServerEntry } from '../../../shared/types'
 
 interface SecretPromptDialogProps {
@@ -18,47 +23,42 @@ export function SecretPromptDialog(props: SecretPromptDialogProps): React.JSX.El
   const [values, setValues] = useState<Record<string, string>>({})
 
   const requiredEnv = server.requiredEnv.filter((envVar) => envVar.isRequired)
+  const canContinue = requiredEnv.every((envVar) => values[envVar.name])
 
   return (
-    <Dialog isOpen onOpenChange={(open) => { if (!open) onCancel() }} purpose="form" width={440}>
-      <Layout
-        header={
-          <DialogHeader
-            title={`Configure ${server.title}`}
-            subtitle="Required values for this server"
-            onOpenChange={() => onCancel()}
-          />
-        }
-        content={
-          <LayoutContent>
-            <VStack gap={4}>
-              {requiredEnv.map((envVar) => (
-                <TextInput
-                  key={envVar.name}
-                  label={envVar.name}
-                  description={envVar.description}
-                  type={envVar.isSecret ? 'password' : 'text'}
-                  value={values[envVar.name] ?? ''}
-                  onChange={(value) => setValues((prev) => ({ ...prev, [envVar.name]: value }))}
-                />
-              ))}
-            </VStack>
-          </LayoutContent>
-        }
-        footer={
-          <LayoutFooter>
-            <HStack gap={2} hAlign="end">
-              <Button label="Cancel" variant="secondary" onClick={onCancel} />
-              <Button
-                label="Continue"
-                variant="primary"
-                isDisabled={requiredEnv.some((envVar) => !values[envVar.name])}
-                onClick={() => onSubmit(values)}
+    <Dialog open onOpenChange={(open: boolean) => { if (!open) onCancel() }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="font-heading">Configure {server.title}</DialogTitle>
+          <DialogDescription>Required values for this server</DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-4">
+          {requiredEnv.map((envVar) => (
+            <div key={envVar.name} className="flex flex-col gap-1.5">
+              <Label htmlFor={envVar.name}>{envVar.name}</Label>
+              <Input
+                id={envVar.name}
+                type={envVar.isSecret ? 'password' : 'text'}
+                value={values[envVar.name] ?? ''}
+                onChange={(e) => setValues((prev) => ({ ...prev, [envVar.name]: e.target.value }))}
               />
-            </HStack>
-          </LayoutFooter>
-        }
-      />
+              {envVar.description && (
+                <p className="text-xs text-muted-foreground">{envVar.description}</p>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button disabled={!canContinue} onClick={() => onSubmit(values)}>
+            Continue
+          </Button>
+        </DialogFooter>
+      </DialogContent>
     </Dialog>
   )
 }

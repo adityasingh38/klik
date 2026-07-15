@@ -1,7 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import '@astryxdesign/core/reset.css'
-import '@astryxdesign/core/astryx.css'
+import './globals.css'
 import App from './App'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

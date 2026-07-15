@@ -17,7 +17,7 @@
 - Dependency auto-install covers Node.js and Python/uv only (via winget); Docker is detected but never auto-installed in v1.
 - Secrets are written only into the target client's own config file. Klik never persists secret values itself.
 - Electron security: `contextIsolation: true`, `nodeIntegration: false`, always.
-- Renderer UI uses `@astryxdesign/core` components exclusively for layout/controls — no raw `<div>`, no inline `style={{}}`. Import each component from its own subpath (e.g. `@astryxdesign/core/VStack`), matching the library's documented convention.
+- Renderer UI uses Tailwind v4 + shadcn/ui components exclusively for layout/controls, added via `npx shadcn@latest add <component>` (`components.json` config is manual, see Klik's `CLAUDE.md`). **Superseded 2026-07-16:** originally specified as `@astryxdesign/core`-exclusive (no raw `<div>`, no inline `style={{}}`) — Tasks 11/12 were built and reviewed against that constraint, then the renderer was fully rewritten to Tailwind+shadcn per explicit user direction. Astryx removed as a dependency.
 - v1 ships unsigned (`.exe`) — a known, documented limitation, not a bug.
 - Real, verified facts baked into this plan (do not second-guess without re-checking): Claude Desktop config is `%APPDATA%\Claude\claude_desktop_config.json` under key `mcpServers`; Cursor global config is `%USERPROFILE%\.cursor\mcp.json` under key `mcpServers`; VS Code user config is `%APPDATA%\Code\User\mcp.json` under key `servers`; the official registry list endpoint returns `{servers: [{server: {...}, _meta: {...}}], metadata: {nextCursor, count}}` with a 100-item page limit.
 

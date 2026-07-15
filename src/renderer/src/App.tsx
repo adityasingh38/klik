@@ -1,17 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { VStack } from '@astryxdesign/core/VStack'
-import { Heading } from '@astryxdesign/core/Heading'
-import { Banner } from '@astryxdesign/core/Banner'
-import { klikApi } from './api/klikApi'
+import { Alert, AlertTitle } from '@/components/ui/alert'
 import { ServerListView } from './components/ServerListView'
 import { InstallProgressView } from './components/InstallProgressView'
 import { SecretPromptDialog } from './components/SecretPromptDialog'
+import { klikApi } from './api/klikApi'
 import type { ClientId, ClientInfo, InstallStepResult, MergedServerEntry } from '../../shared/types'
 
 type ViewMode = 'list' | 'secrets' | 'progress'
 
 export default function App(): React.JSX.Element {
   const [servers, setServers] = useState<MergedServerEntry[]>([])
+  const [isLoadingServers, setIsLoadingServers] = useState(true)
   const [fromCache, setFromCache] = useState(false)
   const [clients, setClients] = useState<ClientInfo[]>([])
   const [installedServerIds, setInstalledServerIds] = useState<string[]>([])
@@ -28,10 +27,13 @@ export default function App(): React.JSX.Element {
   }, [])
 
   useEffect(() => {
-    klikApi.getServers().then(({ servers: fetchedServers, fromCache: fetchedFromCache }) => {
-      setServers(fetchedServers)
-      setFromCache(fetchedFromCache)
-    })
+    klikApi
+      .getServers()
+      .then(({ servers: fetchedServers, fromCache: fetchedFromCache }) => {
+        setServers(fetchedServers)
+        setFromCache(fetchedFromCache)
+      })
+      .finally(() => setIsLoadingServers(false))
     klikApi.getClients().then((fetchedClients) => {
       setClients(fetchedClients)
       setSelectedClientIds(fetchedClients.filter((c) => c.installed).map((c) => c.id))
@@ -94,15 +96,19 @@ export default function App(): React.JSX.Element {
   }
 
   return (
-    <VStack gap={6} width="100%" hAlign="stretch">
-      <Heading level={1}>Klik</Heading>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+      <h1 className="font-heading text-2xl font-bold">Klik</h1>
+
       {view === 'list' && (
-        <VStack gap={4} width="100%" hAlign="stretch">
+        <div className="flex w-full flex-col gap-4">
           {fromCache && (
-            <Banner status="warning" title="Showing cached data — could not reach the registry." />
+            <Alert>
+              <AlertTitle>Showing cached data — could not reach the registry.</AlertTitle>
+            </Alert>
           )}
           <ServerListView
             servers={servers}
+            isLoadingServers={isLoadingServers}
             clients={clients}
             installedServerIds={installedServerIds}
             selectedServerIds={selectedServerIds}
@@ -113,8 +119,9 @@ export default function App(): React.JSX.Element {
             isInstalling={isInstalling}
             onUninstall={handleUninstall}
           />
-        </VStack>
+        </div>
       )}
+
       {view === 'secrets' && pendingSecretServerIds.length > 0 && (
         <SecretPromptDialog
           server={servers.find((s) => s.id === pendingSecretServerIds[0])!}
@@ -122,9 +129,10 @@ export default function App(): React.JSX.Element {
           onCancel={() => setView('list')}
         />
       )}
+
       {view === 'progress' && (
         <InstallProgressView results={results} isInstalling={isInstalling} onDone={() => setView('list')} />
       )}
-    </VStack>
+    </div>
   )
 }

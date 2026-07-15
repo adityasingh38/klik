@@ -1,18 +1,15 @@
 import React, { useMemo, useState } from 'react'
-import { VStack } from '@astryxdesign/core/VStack'
-import { HStack } from '@astryxdesign/core/HStack'
-import { Toolbar } from '@astryxdesign/core/Toolbar'
-import { TextInput } from '@astryxdesign/core/TextInput'
-import { List, ListItem } from '@astryxdesign/core/List'
-import { CheckboxInput } from '@astryxdesign/core/CheckboxInput'
-import { CheckboxList, CheckboxListItem } from '@astryxdesign/core/CheckboxList'
-import { Badge } from '@astryxdesign/core/Badge'
-import { Button } from '@astryxdesign/core/Button'
-import { Text } from '@astryxdesign/core/Text'
+import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import type { ClientId, ClientInfo, MergedServerEntry } from '../../../shared/types'
 
 interface ServerListViewProps {
   servers: MergedServerEntry[]
+  isLoadingServers: boolean
   clients: ClientInfo[]
   installedServerIds: string[]
   selectedServerIds: string[]
@@ -27,6 +24,7 @@ interface ServerListViewProps {
 export function ServerListView(props: ServerListViewProps): React.JSX.Element {
   const {
     servers,
+    isLoadingServers,
     clients,
     installedServerIds,
     selectedServerIds,
@@ -55,83 +53,106 @@ export function ServerListView(props: ServerListViewProps): React.JSX.Element {
     }
   }
 
+  function toggleClient(clientId: ClientId, checked: boolean): void {
+    if (checked) {
+      onChangeSelectedClientIds([...selectedClientIds, clientId])
+    } else {
+      onChangeSelectedClientIds(selectedClientIds.filter((id) => id !== clientId))
+    }
+  }
+
   return (
-    <VStack gap={4} width="100%">
-      <Toolbar
-        label="Server filters"
-        size="sm"
-        startContent={
-          <TextInput
-            label="Search"
-            isLabelHidden
-            placeholder="Search MCP servers..."
-            value={search}
-            onChange={setSearch}
-          />
-        }
+    <div className="flex w-full flex-col gap-4">
+      <Input
+        placeholder="Search MCP servers…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        aria-label="Search MCP servers"
       />
 
-      <CheckboxList
-        label="Install into"
-        value={selectedClientIds}
-        onChange={(values) => onChangeSelectedClientIds(values as ClientId[])}
-      >
-        {clients.map((client) => (
-          <CheckboxListItem
-            key={client.id}
-            value={client.id}
-            label={client.displayName}
-            isDisabled={!client.installed}
-            description={client.installed ? undefined : 'Not detected on this machine'}
-          />
-        ))}
-      </CheckboxList>
+      <div className="flex flex-col gap-1">
+        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Install into</p>
+        <div className="flex flex-col gap-px overflow-hidden rounded-md border border-border">
+          {clients.map((client) => (
+            <label
+              key={client.id}
+              className={cn(
+                'flex items-center gap-3 bg-card px-3 py-2 transition-colors',
+                client.installed ? 'has-[[data-checked]]:bg-accent' : 'cursor-not-allowed opacity-50'
+              )}
+            >
+              <Checkbox
+                checked={selectedClientIds.includes(client.id)}
+                disabled={!client.installed}
+                onCheckedChange={(checked: boolean) => toggleClient(client.id, checked)}
+              />
+              <div className="flex flex-col">
+                <span className="text-sm">{client.displayName}</span>
+                {!client.installed && (
+                  <span className="text-xs text-muted-foreground">Not detected on this machine</span>
+                )}
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
 
-      <List header="MCP servers" hasDividers density="compact">
-        {filteredServers.map((server) => {
-          const isInstalled = installedServerIds.includes(server.id)
-          return (
-            <ListItem
-              key={server.id}
-              label={server.title}
-              description={server.description}
-              startContent={
-                <CheckboxInput
-                  label={`Select ${server.title}`}
-                  isLabelHidden
-                  value={selectedServerIds.includes(server.id)}
-                  onChange={(checked) => toggleServer(server.id, checked)}
-                />
-              }
-              endContent={
-                <HStack gap={2} vAlign="center">
-                  {server.curation?.verified && <Badge variant="info" label="Verified" />}
-                  {isInstalled && <Badge variant="success" label="Installed" />}
-                  {isInstalled && (
-                    <Button
-                      label="Uninstall"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => onUninstall(server.id)}
-                    />
-                  )}
-                </HStack>
-              }
-            />
-          )
-        })}
-      </List>
+      <div className="flex flex-col gap-1">
+        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">MCP servers</p>
+        <div className="flex flex-col divide-y divide-border overflow-hidden rounded-md border border-border">
+          {isLoadingServers && servers.length === 0
+            ? Array.from({ length: 4 }, (_, i) => (
+                <div key={i} className="flex items-center gap-3 bg-card px-3 py-2">
+                  <Skeleton className="size-4 rounded-[4px]" />
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <Skeleton className="h-3.5 w-32" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                </div>
+              ))
+            : filteredServers.map((server) => {
+                const isInstalled = installedServerIds.includes(server.id)
+                return (
+                  <div
+                    key={server.id}
+                    className="flex items-center justify-between gap-3 bg-card px-3 py-2 has-[[data-checked]]:bg-accent"
+                  >
+                    <label className="flex min-w-0 flex-1 items-center gap-3">
+                      <Checkbox
+                        checked={selectedServerIds.includes(server.id)}
+                        onCheckedChange={(checked: boolean) => toggleServer(server.id, checked)}
+                      />
+                      <div className="flex min-w-0 flex-col">
+                        <span className="text-sm">{server.title}</span>
+                        <span className="truncate text-xs text-muted-foreground">{server.description}</span>
+                      </div>
+                    </label>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {server.curation?.verified && (
+                        <Badge className="bg-accent text-accent-foreground">Verified</Badge>
+                      )}
+                      {isInstalled && <Badge className="bg-success text-success-foreground">Installed</Badge>}
+                      {isInstalled && (
+                        <Button variant="destructive" size="sm" onClick={() => onUninstall(server.id)}>
+                          Uninstall
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+        </div>
+      </div>
 
-      <HStack justify="end" gap={2}>
-        <Text type="supporting">{selectedServerIds.length} selected</Text>
+      <div className="flex items-center justify-end gap-3">
+        <span className="text-sm text-muted-foreground">{selectedServerIds.length} selected</span>
         <Button
-          label="Get Your Klik"
-          variant="primary"
-          isDisabled={selectedServerIds.length === 0 || selectedClientIds.length === 0}
-          isLoading={isInstalling}
+          disabled={selectedServerIds.length === 0 || selectedClientIds.length === 0 || isInstalling}
           onClick={onInstall}
-        />
-      </HStack>
-    </VStack>
+        >
+          Get Your Klik
+        </Button>
+      </div>
+    </div>
   )
 }
