@@ -1,20 +1,8 @@
-import type {
-  ClientInfo,
-  GetServersResult,
-  InstallRequest,
-  InstallStepResult,
-  InstalledServerRecord
-} from '../../../shared/types'
+import type { KlikApi } from '../../../preload'
 
 declare global {
   interface Window {
-    klik: {
-      getServers: () => Promise<GetServersResult>
-      getClients: () => Promise<ClientInfo[]>
-      getInstalled: () => Promise<InstalledServerRecord[]>
-      install: (request: InstallRequest) => Promise<InstallStepResult[]>
-      uninstall: (serverId: string) => Promise<void>
-    }
+    klik: KlikApi
   }
 }
 
