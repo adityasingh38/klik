@@ -32,15 +32,18 @@ export function InstallProgressView(props: InstallProgressViewProps): React.JSX.
 
       <VStack gap={2}>
         {results.map((result, index) => (
-          <HStack key={`${result.serverId}-${result.clientId}-${index}`} justify="between" align="center">
-            <Text type="body">
-              {result.serverId} → {result.clientId}
-            </Text>
-            {result.status === 'running' && <Spinner size="sm" label="Installing" />}
-            {result.status === 'done' && <Badge variant="success" label="Installed" />}
-            {result.status === 'error' && <Badge variant="error" label={result.message ?? 'Failed'} />}
-            {result.status === 'pending' && <Text type="supporting">Waiting…</Text>}
-          </HStack>
+          <VStack key={`${result.serverId}-${result.clientId}-${index}`} gap={1}>
+            <HStack justify="between" align="center">
+              <Text type="body">
+                {result.serverId} → {result.clientId}
+              </Text>
+              {result.status === 'running' && <Spinner size="sm" label="Installing" />}
+              {result.status === 'done' && <Badge variant="success" label="Installed" />}
+              {result.status === 'error' && <Badge variant="error" label={result.message ?? 'Failed'} />}
+              {result.status === 'pending' && <Text type="supporting">Waiting…</Text>}
+            </HStack>
+            {result.status === 'done' && result.message && <Text type="supporting">{result.message}</Text>}
+          </VStack>
         ))}
       </VStack>
 
