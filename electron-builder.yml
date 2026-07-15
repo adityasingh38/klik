@@ -1,0 +1,15 @@
+appId: dev.klikmcp.app
+productName: Klik
+directories:
+  output: release
+files:
+  - out/**/*
+extraResources:
+  - from: curation
+    to: curation
+win:
+  target: nsis
+  artifactName: ${productName}-Setup-${version}.exe
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
