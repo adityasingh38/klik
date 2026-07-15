@@ -6,8 +6,8 @@ import { cursorAdapter } from '../clients/cursor'
 import { vscodeAdapter } from '../clients/vscode'
 import { detectInstalledClients } from '../clients/detect'
 import { listInstalled } from '../install/state'
-import { installServer } from '../install/installer'
-import type { ClientId, InstallRequest } from '../../shared/types'
+import { installServer, uninstallServer } from '../install/installer'
+import type { ClientId, GetServersResult, InstallRequest } from '../../shared/types'
 import type { ClientAdapter } from '../clients/types'
 
 const adaptersById: Record<ClientId, ClientAdapter> = {
@@ -17,11 +17,14 @@ const adaptersById: Record<ClientId, ClientAdapter> = {
 }
 
 export function registerIpcHandlers(): void {
-  ipcMain.handle('klik:getServers', async () => {
+  ipcMain.handle('klik:getServers', async (): Promise<GetServersResult> => {
     const userDataDir = app.getPath('userData')
     const resourcesDir = process.resourcesPath
-    const [{ entries }, curation] = await Promise.all([loadRegistry(userDataDir), loadCuration(resourcesDir)])
-    return mergeCuration(entries, curation)
+    const [{ entries, fromCache }, curation] = await Promise.all([
+      loadRegistry(userDataDir),
+      loadCuration(resourcesDir)
+    ])
+    return { servers: mergeCuration(entries, curation), fromCache }
   })
 
   ipcMain.handle('klik:getClients', () => detectInstalledClients())
@@ -34,5 +37,9 @@ export function registerIpcHandlers(): void {
       userDataDir: app.getPath('userData'),
       now: () => new Date().toISOString()
     })
+  )
+
+  ipcMain.handle('klik:uninstall', (_event, serverId: string) =>
+    uninstallServer(serverId, { adaptersById, userDataDir: app.getPath('userData') })
   )
 }

@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { VStack } from '@astryxdesign/core/VStack'
 import { Heading } from '@astryxdesign/core/Heading'
+import { Banner } from '@astryxdesign/core/Banner'
 import { klikApi } from './api/klikApi'
 import { ServerListView } from './components/ServerListView'
 import { InstallProgressView } from './components/InstallProgressView'
@@ -11,7 +12,9 @@ type ViewMode = 'list' | 'secrets' | 'progress'
 
 export default function App(): React.JSX.Element {
   const [servers, setServers] = useState<MergedServerEntry[]>([])
+  const [fromCache, setFromCache] = useState(false)
   const [clients, setClients] = useState<ClientInfo[]>([])
+  const [installedServerIds, setInstalledServerIds] = useState<string[]>([])
   const [selectedServerIds, setSelectedServerIds] = useState<string[]>([])
   const [selectedClientIds, setSelectedClientIds] = useState<ClientId[]>([])
   const [results, setResults] = useState<InstallStepResult[]>([])
@@ -20,13 +23,25 @@ export default function App(): React.JSX.Element {
   const [secretsByServer, setSecretsByServer] = useState<Record<string, Record<string, string>>>({})
   const [pendingSecretServerIds, setPendingSecretServerIds] = useState<string[]>([])
 
+  const refreshInstalled = useCallback((): void => {
+    klikApi.getInstalled().then((records) => setInstalledServerIds(records.map((r) => r.serverId)))
+  }, [])
+
   useEffect(() => {
-    klikApi.getServers().then(setServers)
+    klikApi.getServers().then(({ servers: fetchedServers, fromCache: fetchedFromCache }) => {
+      setServers(fetchedServers)
+      setFromCache(fetchedFromCache)
+    })
     klikApi.getClients().then((fetchedClients) => {
       setClients(fetchedClients)
       setSelectedClientIds(fetchedClients.filter((c) => c.installed).map((c) => c.id))
     })
-  }, [])
+    refreshInstalled()
+  }, [refreshInstalled])
+
+  function handleUninstall(serverId: string): void {
+    void klikApi.uninstall(serverId).then(refreshInstalled)
+  }
 
   const selectedServers = useMemo(
     () =>
@@ -82,16 +97,23 @@ export default function App(): React.JSX.Element {
     <VStack gap={6} width="100%" hAlign="stretch">
       <Heading level={1}>Klik</Heading>
       {view === 'list' && (
-        <ServerListView
-          servers={servers}
-          clients={clients}
-          selectedServerIds={selectedServerIds}
-          onChangeSelectedServerIds={setSelectedServerIds}
-          selectedClientIds={selectedClientIds}
-          onChangeSelectedClientIds={setSelectedClientIds}
-          onInstall={startInstall}
-          isInstalling={isInstalling}
-        />
+        <VStack gap={4} width="100%" hAlign="stretch">
+          {fromCache && (
+            <Banner status="warning" title="Showing cached data — could not reach the registry." />
+          )}
+          <ServerListView
+            servers={servers}
+            clients={clients}
+            installedServerIds={installedServerIds}
+            selectedServerIds={selectedServerIds}
+            onChangeSelectedServerIds={setSelectedServerIds}
+            selectedClientIds={selectedClientIds}
+            onChangeSelectedClientIds={setSelectedClientIds}
+            onInstall={startInstall}
+            isInstalling={isInstalling}
+            onUninstall={handleUninstall}
+          />
+        </VStack>
       )}
       {view === 'secrets' && pendingSecretServerIds.length > 0 && (
         <SecretPromptDialog

@@ -65,3 +65,8 @@ export interface InstalledServerRecord {
   clients: ClientId[]
   installedAt: string
 }
+
+export interface GetServersResult {
+  servers: MergedServerEntry[]
+  fromCache: boolean
+}

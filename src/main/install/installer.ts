@@ -1,7 +1,7 @@
 import type { ClientAdapter, McpServerConfigEntry } from '../clients/types'
 import { isRuntimeAvailable, wingetPackageId } from '../deps/depCheck'
 import { wingetInstall } from '../deps/winget'
-import { recordInstall } from './state'
+import { listInstalled, recordInstall, recordUninstall } from './state'
 import type { ClientId, InstallRequest, InstallStepResult } from '../../shared/types'
 
 export interface InstallerDeps {
@@ -99,4 +99,17 @@ export async function installServer(request: InstallRequest, deps: InstallerDeps
   }
 
   return results
+}
+
+export function uninstallServer(serverId: string, deps: Pick<InstallerDeps, 'adaptersById' | 'userDataDir'>): void {
+  const record = listInstalled(deps.userDataDir).find((r) => r.serverId === serverId)
+  if (!record) return
+
+  for (const clientId of record.clients) {
+    const adapter = deps.adaptersById[clientId]
+    if (!adapter || !adapter.isInstalled()) continue
+    adapter.removeServer(serverId)
+  }
+
+  recordUninstall(deps.userDataDir, serverId)
 }

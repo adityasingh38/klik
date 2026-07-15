@@ -14,24 +14,28 @@ import type { ClientId, ClientInfo, MergedServerEntry } from '../../../shared/ty
 interface ServerListViewProps {
   servers: MergedServerEntry[]
   clients: ClientInfo[]
+  installedServerIds: string[]
   selectedServerIds: string[]
   onChangeSelectedServerIds: (ids: string[]) => void
   selectedClientIds: ClientId[]
   onChangeSelectedClientIds: (ids: ClientId[]) => void
   onInstall: () => void
   isInstalling: boolean
+  onUninstall: (serverId: string) => void
 }
 
 export function ServerListView(props: ServerListViewProps): React.JSX.Element {
   const {
     servers,
     clients,
+    installedServerIds,
     selectedServerIds,
     onChangeSelectedServerIds,
     selectedClientIds,
     onChangeSelectedClientIds,
     onInstall,
-    isInstalling
+    isInstalling,
+    onUninstall
   } = props
   const [search, setSearch] = useState('')
 
@@ -84,22 +88,38 @@ export function ServerListView(props: ServerListViewProps): React.JSX.Element {
       </CheckboxList>
 
       <List header="MCP servers" hasDividers density="compact">
-        {filteredServers.map((server) => (
-          <ListItem
-            key={server.id}
-            label={server.title}
-            description={server.description}
-            startContent={
-              <CheckboxInput
-                label={`Select ${server.title}`}
-                isLabelHidden
-                value={selectedServerIds.includes(server.id)}
-                onChange={(checked) => toggleServer(server.id, checked)}
-              />
-            }
-            endContent={server.curation?.verified ? <Badge variant="info" label="Verified" /> : undefined}
-          />
-        ))}
+        {filteredServers.map((server) => {
+          const isInstalled = installedServerIds.includes(server.id)
+          return (
+            <ListItem
+              key={server.id}
+              label={server.title}
+              description={server.description}
+              startContent={
+                <CheckboxInput
+                  label={`Select ${server.title}`}
+                  isLabelHidden
+                  value={selectedServerIds.includes(server.id)}
+                  onChange={(checked) => toggleServer(server.id, checked)}
+                />
+              }
+              endContent={
+                <HStack gap={2} vAlign="center">
+                  {server.curation?.verified && <Badge variant="info" label="Verified" />}
+                  {isInstalled && <Badge variant="success" label="Installed" />}
+                  {isInstalled && (
+                    <Button
+                      label="Uninstall"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => onUninstall(server.id)}
+                    />
+                  )}
+                </HStack>
+              }
+            />
+          )
+        })}
       </List>
 
       <HStack justify="end" gap={2}>

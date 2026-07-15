@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { installServer } from '../../../src/main/install/installer'
-import { statePath } from '../../../src/main/install/state'
+import { installServer, uninstallServer } from '../../../src/main/install/installer'
+import { statePath, recordInstall } from '../../../src/main/install/state'
 import type { ClientAdapter } from '../../../src/main/clients/types'
 import type { InstallRequest, MergedServerEntry } from '../../../src/shared/types'
 
@@ -260,5 +260,53 @@ describe('installServer', () => {
     expect(adapter.readConfig()).toMatchObject({
       'ai.example/foo': { command: 'npx', args: ['-y', 'foo@1.0.0'], env: { FOO_KEY: 'secret-value' } }
     })
+  })
+})
+
+describe('uninstallServer', () => {
+  let tmpDir: string
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'klik-uninstall-'))
+  })
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true })
+  })
+
+  it('removes the server from every recorded client and clears the state record', () => {
+    const claudeAdapter = fakeAdapter('claude-desktop')
+    const cursorAdapter = fakeAdapter('cursor')
+    claudeAdapter.writeServer('ai.example/foo', { command: 'npx', args: ['-y', 'foo@1.0.0'] })
+    cursorAdapter.writeServer('ai.example/foo', { command: 'npx', args: ['-y', 'foo@1.0.0'] })
+    recordInstall(tmpDir, 'ai.example/foo', ['claude-desktop', 'cursor'], '2026-07-13T00:00:00.000Z')
+
+    uninstallServer('ai.example/foo', {
+      adaptersById: { 'claude-desktop': claudeAdapter, cursor: cursorAdapter } as any,
+      userDataDir: tmpDir
+    })
+
+    expect(claudeAdapter.readConfig()).toEqual({})
+    expect(cursorAdapter.readConfig()).toEqual({})
+    const state = JSON.parse(readFileSync(statePath(tmpDir), 'utf-8'))
+    expect(state).toEqual([])
+  })
+
+  it('skips a client that is no longer installed without throwing, and still clears state', () => {
+    const claudeAdapter = fakeAdapter('claude-desktop')
+    const cursorAdapter = fakeAdapter('cursor', false)
+    claudeAdapter.writeServer('ai.example/foo', { command: 'npx', args: ['-y', 'foo@1.0.0'] })
+    recordInstall(tmpDir, 'ai.example/foo', ['claude-desktop', 'cursor'], '2026-07-13T00:00:00.000Z')
+
+    expect(() =>
+      uninstallServer('ai.example/foo', {
+        adaptersById: { 'claude-desktop': claudeAdapter, cursor: cursorAdapter } as any,
+        userDataDir: tmpDir
+      })
+    ).not.toThrow()
+
+    expect(claudeAdapter.readConfig()).toEqual({})
+    const state = JSON.parse(readFileSync(statePath(tmpDir), 'utf-8'))
+    expect(state).toEqual([])
   })
 })
