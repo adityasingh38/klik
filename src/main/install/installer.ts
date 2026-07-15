@@ -40,6 +40,19 @@ export async function installServer(request: InstallRequest, deps: InstallerDeps
     return results
   }
 
+  if (request.server.transport === 'http' && request.server.requiredEnv.some((envVar) => envVar.isRequired)) {
+    for (const clientId of request.targetClients) {
+      results.push({
+        serverId: request.server.id,
+        clientId,
+        status: 'error',
+        message:
+          'HTTP-transport servers with required secrets are not supported in v1 (no way to deliver the secret to the client config)'
+      })
+    }
+    return results
+  }
+
   for (const runtime of request.server.requiredRuntime) {
     if (isRuntimeAvailable(runtime)) continue
     const packageId = wingetPackageId(runtime)

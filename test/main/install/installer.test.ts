@@ -15,7 +15,7 @@ vi.mock('../../../src/main/deps/winget', () => ({
   wingetInstall: vi.fn(() => ({ success: true, message: '' }))
 }))
 
-import { isRuntimeAvailable } from '../../../src/main/deps/depCheck'
+import { isRuntimeAvailable, wingetPackageId } from '../../../src/main/deps/depCheck'
 import { wingetInstall } from '../../../src/main/deps/winget'
 
 function fakeAdapter(id: 'claude-desktop' | 'cursor', installed = true): ClientAdapter {
@@ -53,6 +53,7 @@ describe('installServer', () => {
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'klik-install-'))
     vi.mocked(isRuntimeAvailable).mockReturnValue(true)
+    vi.mocked(wingetPackageId).mockReturnValue('Some.Package')
     vi.mocked(wingetInstall).mockReturnValue({ success: true, message: '' })
   })
 
@@ -137,6 +138,127 @@ describe('installServer', () => {
       clientId: 'cursor',
       status: 'error',
       message: 'cursor is not installed'
+    })
+  })
+
+  it('errors per client for http-transport servers with a required secret, without writing config', async () => {
+    const httpServer: MergedServerEntry = {
+      ...baseServer,
+      transport: 'http',
+      command: undefined,
+      args: undefined,
+      url: 'https://example.com/mcp',
+      requiredRuntime: []
+    }
+    const request: InstallRequest = {
+      server: httpServer,
+      targetClients: ['claude-desktop'],
+      secrets: { FOO_KEY: 'secret-value' }
+    }
+    const adapter = fakeAdapter('claude-desktop')
+
+    const results = await installServer(request, {
+      adaptersById: { 'claude-desktop': adapter } as any,
+      userDataDir: tmpDir,
+      now: () => '2026-07-13T00:00:00.000Z'
+    })
+
+    expect(results).toEqual([
+      {
+        serverId: 'ai.example/foo',
+        clientId: 'claude-desktop',
+        status: 'error',
+        message: 'HTTP-transport servers with required secrets are not supported in v1 (no way to deliver the secret to the client config)'
+      }
+    ])
+    expect(adapter.readConfig()).toEqual({})
+  })
+
+  it('propagates a writeServer failure as a per-client error without blocking other clients', async () => {
+    const request: InstallRequest = {
+      server: baseServer,
+      targetClients: ['claude-desktop', 'cursor'],
+      secrets: { FOO_KEY: 'secret-value' }
+    }
+    const claudeAdapter = fakeAdapter('claude-desktop')
+    claudeAdapter.writeServer = () => {
+      throw new Error('disk full')
+    }
+    const cursorAdapter = fakeAdapter('cursor')
+
+    const results = await installServer(request, {
+      adaptersById: { 'claude-desktop': claudeAdapter, cursor: cursorAdapter } as any,
+      userDataDir: tmpDir,
+      now: () => '2026-07-13T00:00:00.000Z'
+    })
+
+    expect(results).toContainEqual({
+      serverId: 'ai.example/foo',
+      clientId: 'claude-desktop',
+      status: 'error',
+      message: 'disk full'
+    })
+    expect(results).toContainEqual({ serverId: 'ai.example/foo', clientId: 'cursor', status: 'done' })
+  })
+
+  it('aborts with a per-client error and writes nothing when winget install fails', async () => {
+    vi.mocked(isRuntimeAvailable).mockReturnValue(false)
+    vi.mocked(wingetInstall).mockReturnValue({ success: false, message: 'network error' })
+    const request: InstallRequest = {
+      server: baseServer,
+      targetClients: ['claude-desktop', 'cursor'],
+      secrets: { FOO_KEY: 'secret-value' }
+    }
+    const claudeAdapter = fakeAdapter('claude-desktop')
+    const cursorAdapter = fakeAdapter('cursor')
+
+    const results = await installServer(request, {
+      adaptersById: { 'claude-desktop': claudeAdapter, cursor: cursorAdapter } as any,
+      userDataDir: tmpDir,
+      now: () => '2026-07-13T00:00:00.000Z'
+    })
+
+    expect(results).toEqual([
+      {
+        serverId: 'ai.example/foo',
+        clientId: 'claude-desktop',
+        status: 'error',
+        message: 'Failed to install node: network error'
+      },
+      {
+        serverId: 'ai.example/foo',
+        clientId: 'cursor',
+        status: 'error',
+        message: 'Failed to install node: network error'
+      }
+    ])
+    expect(claudeAdapter.readConfig()).toEqual({})
+    expect(cursorAdapter.readConfig()).toEqual({})
+  })
+
+  it('silently skips a runtime with no winget package id (e.g. docker) and still succeeds', async () => {
+    vi.mocked(isRuntimeAvailable).mockImplementation((runtime: string) => runtime !== 'docker')
+    vi.mocked(wingetPackageId).mockImplementation((runtime: string) => (runtime === 'docker' ? null : 'Some.Package'))
+    const dockerServer: MergedServerEntry = {
+      ...baseServer,
+      requiredRuntime: ['node', 'docker']
+    }
+    const request: InstallRequest = {
+      server: dockerServer,
+      targetClients: ['claude-desktop'],
+      secrets: { FOO_KEY: 'secret-value' }
+    }
+    const adapter = fakeAdapter('claude-desktop')
+
+    const results = await installServer(request, {
+      adaptersById: { 'claude-desktop': adapter } as any,
+      userDataDir: tmpDir,
+      now: () => '2026-07-13T00:00:00.000Z'
+    })
+
+    expect(results).toEqual([{ serverId: 'ai.example/foo', clientId: 'claude-desktop', status: 'done' }])
+    expect(adapter.readConfig()).toMatchObject({
+      'ai.example/foo': { command: 'npx', args: ['-y', 'foo@1.0.0'], env: { FOO_KEY: 'secret-value' } }
     })
   })
 })
