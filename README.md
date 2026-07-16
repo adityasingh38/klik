@@ -1,5 +1,8 @@
 # Klik
 
+[![CI](https://github.com/adityasingh38/klik/actions/workflows/ci.yml/badge.svg)](https://github.com/adityasingh38/klik/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **One-click MCP server installer for Windows.**
 
 Browse the [Model Context Protocol](https://modelcontextprotocol.io) registry, pick the servers you want, and install them straight into Claude Desktop, Cursor, or VS Code — no manual JSON config editing, no restarting five times to see if you got the syntax right.
