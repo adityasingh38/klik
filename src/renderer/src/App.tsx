@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import { Alert, AlertTitle } from '@/components/ui/alert'
+import { DotPattern } from '@/components/ui/dot-pattern'
 import { ServerListView } from './components/ServerListView'
 import { InstallProgressView } from './components/InstallProgressView'
 import { SecretPromptDialog } from './components/SecretPromptDialog'
@@ -96,43 +98,71 @@ export default function App(): React.JSX.Element {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
-      <h1 className="font-heading text-2xl font-bold">Klik</h1>
+    <div className="relative min-h-screen overflow-hidden">
+      <DotPattern className="text-border/25" />
+      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+        <h1 className="font-heading text-2xl font-bold">Klik</h1>
 
-      {view === 'list' && (
-        <div className="flex w-full flex-col gap-4">
-          {fromCache && (
-            <Alert>
-              <AlertTitle>Showing cached data — could not reach the registry.</AlertTitle>
-            </Alert>
+        <AnimatePresence mode="wait">
+          {view === 'list' && (
+            <motion.div
+              key="list"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="flex w-full flex-col gap-4"
+            >
+              {fromCache && (
+                <Alert>
+                  <AlertTitle>Showing cached data — could not reach the registry.</AlertTitle>
+                </Alert>
+              )}
+              <ServerListView
+                servers={servers}
+                isLoadingServers={isLoadingServers}
+                clients={clients}
+                installedServerIds={installedServerIds}
+                selectedServerIds={selectedServerIds}
+                onChangeSelectedServerIds={setSelectedServerIds}
+                selectedClientIds={selectedClientIds}
+                onChangeSelectedClientIds={setSelectedClientIds}
+                onInstall={startInstall}
+                isInstalling={isInstalling}
+                onUninstall={handleUninstall}
+              />
+            </motion.div>
           )}
-          <ServerListView
-            servers={servers}
-            isLoadingServers={isLoadingServers}
-            clients={clients}
-            installedServerIds={installedServerIds}
-            selectedServerIds={selectedServerIds}
-            onChangeSelectedServerIds={setSelectedServerIds}
-            selectedClientIds={selectedClientIds}
-            onChangeSelectedClientIds={setSelectedClientIds}
-            onInstall={startInstall}
-            isInstalling={isInstalling}
-            onUninstall={handleUninstall}
-          />
-        </div>
-      )}
 
-      {view === 'secrets' && pendingSecretServerIds.length > 0 && (
-        <SecretPromptDialog
-          server={servers.find((s) => s.id === pendingSecretServerIds[0])!}
-          onSubmit={handleSecretsSubmit}
-          onCancel={() => setView('list')}
-        />
-      )}
+          {view === 'secrets' && pendingSecretServerIds.length > 0 && (
+            <motion.div
+              key="secrets"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <SecretPromptDialog
+                server={servers.find((s) => s.id === pendingSecretServerIds[0])!}
+                onSubmit={handleSecretsSubmit}
+                onCancel={() => setView('list')}
+              />
+            </motion.div>
+          )}
 
-      {view === 'progress' && (
-        <InstallProgressView results={results} isInstalling={isInstalling} onDone={() => setView('list')} />
-      )}
+          {view === 'progress' && (
+            <motion.div
+              key="progress"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              <InstallProgressView results={results} isInstalling={isInstalling} onDone={() => setView('list')} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   )
 }

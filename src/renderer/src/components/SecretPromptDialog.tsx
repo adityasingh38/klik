@@ -10,6 +10,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { ShimmerButton } from '@/components/ui/shimmer-button'
 import type { MergedServerEntry } from '../../../shared/types'
 
 interface SecretPromptDialogProps {
@@ -54,9 +55,17 @@ export function SecretPromptDialog(props: SecretPromptDialogProps): React.JSX.El
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button disabled={!canContinue} onClick={() => onSubmit(values)}>
+          <ShimmerButton
+            disabled={!canContinue}
+            onClick={() => onSubmit(values)}
+            background="var(--primary)"
+            shimmerColor="#eeeae2"
+            shimmerDuration="2.5s"
+            borderRadius="var(--radius-lg)"
+            className="h-8 rounded-lg border-none px-3 text-sm font-medium text-primary-foreground disabled:opacity-50 disabled:pointer-events-none"
+          >
             Continue
-          </Button>
+          </ShimmerButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

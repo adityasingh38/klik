@@ -5,6 +5,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { MagicCard } from '@/components/ui/magic-card'
+import { BorderBeam } from '@/components/ui/border-beam'
+import { BlurFade } from '@/components/ui/blur-fade'
+import { ShimmerButton } from '@/components/ui/shimmer-button'
 import type { ClientId, ClientInfo, MergedServerEntry } from '../../../shared/types'
 
 interface ServerListViewProps {
@@ -36,6 +40,7 @@ export function ServerListView(props: ServerListViewProps): React.JSX.Element {
     onUninstall
   } = props
   const [search, setSearch] = useState('')
+  const [isSearchFocused, setIsSearchFocused] = useState(false)
 
   const filteredServers = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -63,12 +68,17 @@ export function ServerListView(props: ServerListViewProps): React.JSX.Element {
 
   return (
     <div className="flex w-full flex-col gap-4">
-      <Input
-        placeholder="Search MCP servers…"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        aria-label="Search MCP servers"
-      />
+      <div className="relative rounded-lg">
+        <Input
+          placeholder="Search MCP servers…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onFocus={() => setIsSearchFocused(true)}
+          onBlur={() => setIsSearchFocused(false)}
+          aria-label="Search MCP servers"
+        />
+        {isSearchFocused && <BorderBeam size={40} duration={4} colorFrom="#e0873f" colorTo="#f2c98c" />}
+      </div>
 
       <div className="flex flex-col gap-1">
         <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Install into</p>
@@ -99,10 +109,10 @@ export function ServerListView(props: ServerListViewProps): React.JSX.Element {
 
       <div className="flex flex-col gap-1">
         <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">MCP servers</p>
-        <div className="flex flex-col divide-y divide-border overflow-hidden rounded-md border border-border">
+        <div className="flex flex-col gap-2">
           {isLoadingServers && servers.length === 0
             ? Array.from({ length: 4 }, (_, i) => (
-                <div key={i} className="flex items-center gap-3 bg-card px-3 py-2">
+                <div key={i} className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2">
                   <Skeleton className="size-4 rounded-[4px]" />
                   <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                     <Skeleton className="h-3.5 w-32" />
@@ -110,35 +120,42 @@ export function ServerListView(props: ServerListViewProps): React.JSX.Element {
                   </div>
                 </div>
               ))
-            : filteredServers.map((server) => {
+            : filteredServers.map((server, index) => {
                 const isInstalled = installedServerIds.includes(server.id)
                 return (
-                  <div
-                    key={server.id}
-                    className="flex items-center justify-between gap-3 bg-card px-3 py-2 has-[[data-checked]]:bg-accent"
-                  >
-                    <label className="flex min-w-0 flex-1 items-center gap-3">
-                      <Checkbox
-                        checked={selectedServerIds.includes(server.id)}
-                        onCheckedChange={(checked: boolean) => toggleServer(server.id, checked)}
-                      />
-                      <div className="flex min-w-0 flex-col">
-                        <span className="text-sm">{server.title}</span>
-                        <span className="truncate text-xs text-muted-foreground">{server.description}</span>
+                  <BlurFade key={server.id} delay={index * 0.03} duration={0.3} direction="up">
+                    <MagicCard
+                      className="rounded-md"
+                      gradientColor="#2c2521"
+                      gradientOpacity={0.5}
+                      gradientFrom="#e0873f"
+                      gradientTo="#f2c98c"
+                    >
+                      <div className="flex items-center justify-between gap-3 rounded-md bg-card px-3 py-2 has-[[data-checked]]:bg-accent">
+                        <label className="flex min-w-0 flex-1 items-center gap-3">
+                          <Checkbox
+                            checked={selectedServerIds.includes(server.id)}
+                            onCheckedChange={(checked: boolean) => toggleServer(server.id, checked)}
+                          />
+                          <div className="flex min-w-0 flex-col">
+                            <span className="text-sm">{server.title}</span>
+                            <span className="truncate text-xs text-muted-foreground">{server.description}</span>
+                          </div>
+                        </label>
+                        <div className="flex shrink-0 items-center gap-2">
+                          {server.curation?.verified && (
+                            <Badge className="bg-accent text-accent-foreground">Verified</Badge>
+                          )}
+                          {isInstalled && <Badge className="bg-success text-success-foreground">Installed</Badge>}
+                          {isInstalled && (
+                            <Button variant="destructive" size="sm" onClick={() => onUninstall(server.id)}>
+                              Uninstall
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </label>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {server.curation?.verified && (
-                        <Badge className="bg-accent text-accent-foreground">Verified</Badge>
-                      )}
-                      {isInstalled && <Badge className="bg-success text-success-foreground">Installed</Badge>}
-                      {isInstalled && (
-                        <Button variant="destructive" size="sm" onClick={() => onUninstall(server.id)}>
-                          Uninstall
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+                    </MagicCard>
+                  </BlurFade>
                 )
               })}
         </div>
@@ -146,12 +163,17 @@ export function ServerListView(props: ServerListViewProps): React.JSX.Element {
 
       <div className="flex items-center justify-end gap-3">
         <span className="text-sm text-muted-foreground">{selectedServerIds.length} selected</span>
-        <Button
+        <ShimmerButton
           disabled={selectedServerIds.length === 0 || selectedClientIds.length === 0 || isInstalling}
           onClick={onInstall}
+          background="var(--primary)"
+          shimmerColor="#eeeae2"
+          shimmerDuration="2.5s"
+          borderRadius="var(--radius-lg)"
+          className="h-8 rounded-lg border-none px-3 text-sm font-medium text-primary-foreground disabled:opacity-50 disabled:pointer-events-none"
         >
           Get Your Klik
-        </Button>
+        </ShimmerButton>
       </div>
     </div>
   )
