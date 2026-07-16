@@ -44,6 +44,8 @@ export const ShimmerButton = React.forwardRef<
         className={cn(
           "group relative z-0 flex cursor-pointer items-center justify-center overflow-hidden [border-radius:var(--radius)] border border-white/10 px-6 py-3 whitespace-nowrap text-white [background:var(--bg)]",
           "transform-gpu transition-transform duration-300 ease-in-out active:translate-y-px",
+          "outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+          "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
         ref={ref}
@@ -57,9 +59,9 @@ export const ShimmerButton = React.forwardRef<
           )}
         >
           {/* spark */}
-          <div className="animate-shimmer-slide absolute inset-0 aspect-[1] h-[100cqh] rounded-none [mask:none]">
+          <div className="animate-shimmer-slide group-disabled:animate-none motion-reduce:animate-none absolute inset-0 aspect-[1] h-[100cqh] rounded-none [mask:none]">
             {/* spark before */}
-            <div className="animate-spin-around absolute -inset-full w-auto [translate:0_0] rotate-0 [background:conic-gradient(from_calc(270deg-(var(--spread)*0.5)),transparent_0,var(--shimmer-color)_var(--spread),transparent_var(--spread))]" />
+            <div className="animate-spin-around group-disabled:animate-none motion-reduce:animate-none absolute -inset-full w-auto [translate:0_0] rotate-0 [background:conic-gradient(from_calc(270deg-(var(--spread)*0.5)),transparent_0,var(--shimmer-color)_var(--spread),transparent_var(--spread))]" />
           </div>
         </div>
         {children}

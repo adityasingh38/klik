@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
@@ -41,6 +41,11 @@ export function ServerListView(props: ServerListViewProps): React.JSX.Element {
   } = props
   const [search, setSearch] = useState('')
   const [isSearchFocused, setIsSearchFocused] = useState(false)
+  const [hasEnteredList, setHasEnteredList] = useState(false)
+
+  useEffect(() => {
+    if (!isLoadingServers && servers.length > 0) setHasEnteredList(true)
+  }, [isLoadingServers, servers.length])
 
   const filteredServers = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -81,13 +86,13 @@ export function ServerListView(props: ServerListViewProps): React.JSX.Element {
       </div>
 
       <div className="flex flex-col gap-1">
-        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Install into</p>
+        <p className="text-sm font-medium text-muted-foreground">Install into</p>
         <div className="flex flex-col gap-px overflow-hidden rounded-md border border-border">
           {clients.map((client) => (
             <label
               key={client.id}
               className={cn(
-                'flex items-center gap-3 bg-card px-3 py-2 transition-colors',
+                'flex min-w-0 items-center gap-3 bg-card px-3 py-2 transition-colors',
                 client.installed ? 'has-[[data-checked]]:bg-accent' : 'cursor-not-allowed opacity-50'
               )}
             >
@@ -96,10 +101,10 @@ export function ServerListView(props: ServerListViewProps): React.JSX.Element {
                 disabled={!client.installed}
                 onCheckedChange={(checked: boolean) => toggleClient(client.id, checked)}
               />
-              <div className="flex flex-col">
-                <span className="text-sm">{client.displayName}</span>
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate text-sm">{client.displayName}</span>
                 {!client.installed && (
-                  <span className="text-xs text-muted-foreground">Not detected on this machine</span>
+                  <span className="truncate text-xs text-muted-foreground">Not detected on this machine</span>
                 )}
               </div>
             </label>
@@ -108,7 +113,7 @@ export function ServerListView(props: ServerListViewProps): React.JSX.Element {
       </div>
 
       <div className="flex flex-col gap-1">
-        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">MCP servers</p>
+        <p className="text-sm font-medium text-muted-foreground">MCP servers</p>
         <div className="flex flex-col gap-2">
           {isLoadingServers && servers.length === 0
             ? Array.from({ length: 4 }, (_, i) => (
@@ -122,39 +127,52 @@ export function ServerListView(props: ServerListViewProps): React.JSX.Element {
               ))
             : filteredServers.map((server, index) => {
                 const isInstalled = installedServerIds.includes(server.id)
+                const row = (
+                  <MagicCard
+                    className="rounded-md"
+                    gradientColor="#2c2521"
+                    gradientOpacity={0.5}
+                    gradientFrom="#e0873f"
+                    gradientTo="#f2c98c"
+                  >
+                    <div className="flex items-center justify-between gap-3 rounded-md bg-card px-3 py-2 has-[[data-checked]]:bg-accent">
+                      <label className="flex min-w-0 flex-1 items-center gap-3">
+                        <Checkbox
+                          checked={selectedServerIds.includes(server.id)}
+                          onCheckedChange={(checked: boolean) => toggleServer(server.id, checked)}
+                        />
+                        <div className="flex min-w-0 flex-col">
+                          <span className="text-sm">{server.title}</span>
+                          <span className="truncate text-xs text-muted-foreground">{server.description}</span>
+                        </div>
+                      </label>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {server.curation?.verified && (
+                          <Badge className="bg-accent text-accent-foreground">Verified</Badge>
+                        )}
+                        {isInstalled && <Badge className="bg-success text-success-foreground">Installed</Badge>}
+                        {isInstalled && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              if (window.confirm(`Uninstall ${server.title}?`)) onUninstall(server.id)
+                            }}
+                          >
+                            Uninstall
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </MagicCard>
+                )
+                // Only animate the entrance on first load — replaying it on every
+                // search-driven filter change would fight the fastest, most-repeated
+                // interaction in the app.
+                if (hasEnteredList) return <React.Fragment key={server.id}>{row}</React.Fragment>
                 return (
                   <BlurFade key={server.id} delay={index * 0.03} duration={0.3} direction="up">
-                    <MagicCard
-                      className="rounded-md"
-                      gradientColor="#2c2521"
-                      gradientOpacity={0.5}
-                      gradientFrom="#e0873f"
-                      gradientTo="#f2c98c"
-                    >
-                      <div className="flex items-center justify-between gap-3 rounded-md bg-card px-3 py-2 has-[[data-checked]]:bg-accent">
-                        <label className="flex min-w-0 flex-1 items-center gap-3">
-                          <Checkbox
-                            checked={selectedServerIds.includes(server.id)}
-                            onCheckedChange={(checked: boolean) => toggleServer(server.id, checked)}
-                          />
-                          <div className="flex min-w-0 flex-col">
-                            <span className="text-sm">{server.title}</span>
-                            <span className="truncate text-xs text-muted-foreground">{server.description}</span>
-                          </div>
-                        </label>
-                        <div className="flex shrink-0 items-center gap-2">
-                          {server.curation?.verified && (
-                            <Badge className="bg-accent text-accent-foreground">Verified</Badge>
-                          )}
-                          {isInstalled && <Badge className="bg-success text-success-foreground">Installed</Badge>}
-                          {isInstalled && (
-                            <Button variant="destructive" size="sm" onClick={() => onUninstall(server.id)}>
-                              Uninstall
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </MagicCard>
+                    {row}
                   </BlurFade>
                 )
               })}
@@ -170,7 +188,7 @@ export function ServerListView(props: ServerListViewProps): React.JSX.Element {
           shimmerColor="#eeeae2"
           shimmerDuration="2.5s"
           borderRadius="var(--radius-lg)"
-          className="h-8 rounded-lg border-none px-3 text-sm font-medium text-primary-foreground disabled:opacity-50 disabled:pointer-events-none"
+          className="h-8 rounded-lg border-none px-3 text-sm font-medium text-primary-foreground"
         >
           Get Your Klik
         </ShimmerButton>

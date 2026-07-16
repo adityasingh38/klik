@@ -62,7 +62,7 @@ export function SecretPromptDialog(props: SecretPromptDialogProps): React.JSX.El
             shimmerColor="#eeeae2"
             shimmerDuration="2.5s"
             borderRadius="var(--radius-lg)"
-            className="h-8 rounded-lg border-none px-3 text-sm font-medium text-primary-foreground disabled:opacity-50 disabled:pointer-events-none"
+            className="h-8 rounded-lg border-none px-3 text-sm font-medium text-primary-foreground"
           >
             Continue
           </ShimmerButton>

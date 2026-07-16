@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Alert, AlertTitle } from '@/components/ui/alert'
 import { DotPattern } from '@/components/ui/dot-pattern'
+import { Confetti, type ConfettiRef } from '@/components/ui/confetti'
 import { ServerListView } from './components/ServerListView'
 import { InstallProgressView } from './components/InstallProgressView'
 import { SecretPromptDialog } from './components/SecretPromptDialog'
@@ -23,6 +24,25 @@ export default function App(): React.JSX.Element {
   const [view, setView] = useState<ViewMode>('list')
   const [secretsByServer, setSecretsByServer] = useState<Record<string, Record<string, string>>>({})
   const [pendingSecretServerIds, setPendingSecretServerIds] = useState<string[]>([])
+
+  const confettiRef = useRef<ConfettiRef>(null)
+  const hasFiredConfettiRef = useRef(false)
+  const installSucceeded =
+    results.length > 0 && !isInstalling && results.every((r) => r.status === 'done')
+
+  useEffect(() => {
+    if (installSucceeded && !hasFiredConfettiRef.current) {
+      hasFiredConfettiRef.current = true
+      confettiRef.current?.fire({
+        particleCount: 80,
+        spread: 70,
+        colors: ['#e0873f', '#eeeae2', '#2c2521']
+      })
+    }
+    if (!installSucceeded) {
+      hasFiredConfettiRef.current = false
+    }
+  }, [installSucceeded])
 
   const refreshInstalled = useCallback((): void => {
     klikApi.getInstalled().then((records) => setInstalledServerIds(records.map((r) => r.serverId)))
@@ -100,6 +120,11 @@ export default function App(): React.JSX.Element {
   return (
     <div className="relative min-h-screen overflow-hidden">
       <DotPattern className="text-border/25" />
+      <Confetti
+        ref={confettiRef}
+        manualstart
+        className="pointer-events-none fixed inset-0 z-50 size-full"
+      />
       <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
         <h1 className="font-heading text-2xl font-bold">Klik</h1>
 
