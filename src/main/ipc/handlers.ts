@@ -1,5 +1,5 @@
 import { app, ipcMain } from 'electron'
-import { loadRegistry } from '../registry/client'
+import { loadRegistry, readCache } from '../registry/client'
 import { loadCuration, mergeCuration } from '../curation/overlay'
 import { claudeDesktopAdapter } from '../clients/claudeDesktop'
 import { cursorAdapter } from '../clients/cursor'
@@ -20,6 +20,15 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('klik:getServers', async (): Promise<GetServersResult> => {
     const userDataDir = app.getPath('userData')
     const resourcesDir = process.resourcesPath
+    const cached = readCache(userDataDir)
+
+    if (cached) {
+      // Serve the on-disk cache instantly; refresh it in the background for next launch.
+      void loadRegistry(userDataDir).catch(() => {})
+      const curation = await loadCuration(resourcesDir)
+      return { servers: mergeCuration(cached, curation), fromCache: true }
+    }
+
     const [{ entries, fromCache }, curation] = await Promise.all([
       loadRegistry(userDataDir),
       loadCuration(resourcesDir)

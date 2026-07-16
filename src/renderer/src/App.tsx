@@ -115,7 +115,7 @@ export default function App(): React.JSX.Element {
             >
               {fromCache && (
                 <Alert>
-                  <AlertTitle>Showing cached data — could not reach the registry.</AlertTitle>
+                  <AlertTitle>Showing cached servers while refreshing in the background.</AlertTitle>
                 </Alert>
               )}
               <ServerListView

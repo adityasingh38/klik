@@ -134,7 +134,7 @@ export function cachePath(userDataDir: string): string {
   return join(userDataDir, 'registry-cache.json')
 }
 
-function readCache(userDataDir: string): RegistryServerEntry[] | null {
+export function readCache(userDataDir: string): RegistryServerEntry[] | null {
   const path = cachePath(userDataDir)
   if (!existsSync(path)) return null
   try {
