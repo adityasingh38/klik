@@ -42,6 +42,7 @@ export function ServerListView(props: ServerListViewProps): React.JSX.Element {
   const [search, setSearch] = useState('')
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const [hasEnteredList, setHasEnteredList] = useState(false)
+  const [verifiedOnly, setVerifiedOnly] = useState(false)
 
   useEffect(() => {
     if (!isLoadingServers && servers.length > 0) setHasEnteredList(true)
@@ -49,11 +50,24 @@ export function ServerListView(props: ServerListViewProps): React.JSX.Element {
 
   const filteredServers = useMemo(() => {
     const query = search.trim().toLowerCase()
-    if (!query) return servers
+    const matchesQuery = (server: MergedServerEntry): boolean =>
+      !query || server.title.toLowerCase().includes(query) || server.description.toLowerCase().includes(query)
     return servers.filter(
-      (server) => server.title.toLowerCase().includes(query) || server.description.toLowerCase().includes(query)
+      (server) => matchesQuery(server) && (!verifiedOnly || server.curation?.verified === true)
     )
-  }, [servers, search])
+  }, [servers, search, verifiedOnly])
+
+  const allVisibleSelected =
+    filteredServers.length > 0 && filteredServers.every((server) => selectedServerIds.includes(server.id))
+
+  function toggleSelectAllVisible(): void {
+    const visibleIds = filteredServers.map((server) => server.id)
+    if (allVisibleSelected) {
+      onChangeSelectedServerIds(selectedServerIds.filter((id) => !visibleIds.includes(id)))
+    } else {
+      onChangeSelectedServerIds([...new Set([...selectedServerIds, ...visibleIds])])
+    }
+  }
 
   function toggleServer(serverId: string, checked: boolean): void {
     if (checked) {
@@ -113,7 +127,25 @@ export function ServerListView(props: ServerListViewProps): React.JSX.Element {
       </div>
 
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-medium text-muted-foreground">MCP servers</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-medium text-muted-foreground">MCP servers</p>
+          {!isLoadingServers && servers.length > 0 && (
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Checkbox checked={verifiedOnly} onCheckedChange={(checked: boolean) => setVerifiedOnly(checked)} />
+                Verified only
+              </label>
+              <button
+                type="button"
+                onClick={toggleSelectAllVisible}
+                disabled={filteredServers.length === 0}
+                className="text-xs font-medium text-primary hover:underline disabled:pointer-events-none disabled:opacity-50"
+              >
+                {allVisibleSelected ? 'Clear all' : 'Select all'}
+              </button>
+            </div>
+          )}
+        </div>
         <div className="flex flex-col gap-2">
           {isLoadingServers && servers.length === 0
             ? Array.from({ length: 4 }, (_, i) => (
