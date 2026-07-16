@@ -3,6 +3,16 @@
   "version": "0.1.0",
   "description": "Klik — one-click MCP server installer for Windows",
   "private": true,
+  "license": "MIT",
+  "author": "Aditya Singh",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adityasingh38/klik.git"
+  },
+  "homepage": "https://github.com/adityasingh38/klik#readme",
+  "bugs": {
+    "url": "https://github.com/adityasingh38/klik/issues"
+  },
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
