@@ -45,6 +45,19 @@ export interface CurationEntry {
   warnings: string[]
 }
 
+/**
+ * A server Klik ships itself. The public MCP registry doesn't carry the canonical
+ * servers (searching it for "github"/"postgres" returns forks and mirrors), and many
+ * widely-blogged packages are deprecated — so the well-known ones are curated here
+ * with hand-verified install metadata instead of being discovered.
+ */
+export interface CuratedServerEntry extends RegistryServerEntry {
+  verified: boolean
+  tested: boolean
+  category: string
+  warnings: string[]
+}
+
 export interface MergedServerEntry extends RegistryServerEntry {
   curation?: CurationEntry
   /** Derived by Klik (curation overlay may override). Never absent on merged entries. */
