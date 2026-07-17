@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { CurationEntry, MergedServerEntry, RegistryServerEntry } from '../../shared/types'
+import { categorize } from '../registry/categorize'
 
 const OVERLAY_URL = 'https://raw.githubusercontent.com/adityasuper38/klikmcp/main/curation/overlay.json'
 const FETCH_TIMEOUT_MS = 5000
@@ -34,5 +35,13 @@ export async function loadCuration(resourcesDir: string): Promise<CurationEntry[
 
 export function mergeCuration(entries: RegistryServerEntry[], curation: CurationEntry[]): MergedServerEntry[] {
   const byId = new Map(curation.map((c) => [c.registryId, c]))
-  return entries.map((entry) => ({ ...entry, curation: byId.get(entry.id) }))
+  return entries.map((entry) => {
+    const entryCuration = byId.get(entry.id)
+    const curatedCategory = entryCuration?.category?.trim()
+    return {
+      ...entry,
+      curation: entryCuration,
+      category: curatedCategory || categorize(entry)
+    }
+  })
 }

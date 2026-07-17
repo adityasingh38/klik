@@ -49,7 +49,8 @@ const baseServer: MergedServerEntry = {
   command: 'npx',
   args: ['-y', 'foo@1.0.0'],
   requiredRuntime: ['node'],
-  requiredEnv: [{ name: 'FOO_KEY', description: '', isRequired: true, isSecret: true }]
+  requiredEnv: [{ name: 'FOO_KEY', description: '', isRequired: true, isSecret: true }],
+  category: 'Other'
 }
 
 describe('installServer', () => {
@@ -57,6 +58,9 @@ describe('installServer', () => {
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'klik-install-'))
+    // Reset call history too — assertions like "winget was never called" are
+    // meaningless if counts leak in from the previous test.
+    vi.clearAllMocks()
     vi.mocked(isRuntimeAvailable).mockReturnValue(true)
     vi.mocked(wingetPackageId).mockReturnValue('Some.Package')
     vi.mocked(wingetInstall).mockReturnValue({ success: true, message: '' })
@@ -82,12 +86,13 @@ describe('installServer', () => {
     expect(adapter.readConfig()).toEqual({})
   })
 
-  it('installs a missing runtime via winget before writing config', async () => {
+  it('installs a missing runtime via winget when the user consented', async () => {
     vi.mocked(isRuntimeAvailable).mockReturnValue(false)
     const request: InstallRequest = {
       server: baseServer,
       targetClients: ['claude-desktop'],
-      secrets: { FOO_KEY: 'secret-value' }
+      secrets: { FOO_KEY: 'secret-value' },
+      allowRuntimeInstall: true
     }
     const adapter = fakeAdapter('claude-desktop')
 
@@ -102,6 +107,28 @@ describe('installServer', () => {
     expect(adapter.readConfig()).toMatchObject({
       'ai.example/foo': { command: 'npx', args: ['-y', 'foo@1.0.0'], env: { FOO_KEY: 'secret-value' } }
     })
+  })
+
+  it('never installs a runtime system-wide without consent, warning instead', async () => {
+    vi.mocked(isRuntimeAvailable).mockReturnValue(false)
+    const request: InstallRequest = {
+      server: baseServer,
+      targetClients: ['claude-desktop'],
+      secrets: { FOO_KEY: 'secret-value' }
+      // allowRuntimeInstall omitted — the default must not touch the system.
+    }
+    const adapter = fakeAdapter('claude-desktop')
+
+    const results = await installServer(request, {
+      adaptersById: { 'claude-desktop': adapter } as any,
+      userDataDir: tmpDir,
+      now: () => '2026-07-13T00:00:00.000Z'
+    })
+
+    expect(wingetInstall).not.toHaveBeenCalled()
+    expect(results[0]).toMatchObject({ status: 'done' })
+    expect(results[0].message).toMatch(/Node/)
+    expect(adapter.readConfig()).toMatchObject({ 'ai.example/foo': { command: 'npx' } })
   })
 
   it('records a successful install in local state', async () => {
@@ -212,7 +239,8 @@ describe('installServer', () => {
     const request: InstallRequest = {
       server: baseServer,
       targetClients: ['claude-desktop', 'cursor'],
-      secrets: { FOO_KEY: 'secret-value' }
+      secrets: { FOO_KEY: 'secret-value' },
+      allowRuntimeInstall: true
     }
     const claudeAdapter = fakeAdapter('claude-desktop')
     const cursorAdapter = fakeAdapter('cursor')
