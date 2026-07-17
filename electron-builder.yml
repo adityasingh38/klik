@@ -13,3 +13,13 @@ win:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
+mac:
+  target:
+    - target: dmg
+      # One universal disk image runs on both Apple Silicon and Intel Macs.
+      arch: universal
+  category: public.app-category.developer-tools
+  artifactName: ${productName}-${version}-universal.dmg
+  # No Apple Developer certificate yet, so build unsigned instead of failing when
+  # electron-builder can't find an identity. Gatekeeper will warn until notarized.
+  identity: null

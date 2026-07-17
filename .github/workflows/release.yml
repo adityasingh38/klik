@@ -1,0 +1,40 @@
+name: Release
+
+# Pushing a version tag builds the app on both a Windows and a macOS runner and
+# attaches each installer to the GitHub release for that tag. This is the only way
+# to produce the macOS .dmg — it can't be built on Windows.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            build: npm run build:win
+            artifact: release/*.exe
+          - os: macos-latest
+            build: npm run build:mac
+            artifact: release/*.dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: ${{ matrix.build }}
+      - name: Attach installer to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.artifact }}
