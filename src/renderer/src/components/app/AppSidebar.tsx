@@ -84,7 +84,7 @@ export function AppSidebar(props: AppSidebarProps): React.JSX.Element {
       <SidebarFooter>
         <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:justify-center">
           <span className="size-1.5 shrink-0 rounded-full bg-success-foreground shadow-[0_0_6px] shadow-success-foreground/60" />
-          <span className="group-data-[collapsible=icon]:hidden">Registry connected · v0.1.0</span>
+          <span className="group-data-[collapsible=icon]:hidden">Registry connected · v{__APP_VERSION__}</span>
         </div>
       </SidebarFooter>
     </Sidebar>

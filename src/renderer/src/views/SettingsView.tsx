@@ -47,7 +47,7 @@ export function SettingsView(props: SettingsViewProps): React.JSX.Element {
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
             <span className="font-heading text-lg font-bold text-foreground">Klik</span>
-            <Badge variant="outline">v0.1.0</Badge>
+            <Badge variant="outline">v{__APP_VERSION__}</Badge>
           </div>
           <span className="text-xs text-muted-foreground">
             One-click installer for MCP servers into your desktop clients.
