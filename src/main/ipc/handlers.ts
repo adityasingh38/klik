@@ -7,7 +7,8 @@ import { vscodeAdapter } from '../clients/vscode'
 import { detectInstalledClients } from '../clients/detect'
 import { listInstalled } from '../install/state'
 import { installServer, uninstallServer } from '../install/installer'
-import type { ClientId, GetServersResult, InstallRequest } from '../../shared/types'
+import { buildInstallPreview } from '../install/preflight'
+import type { ClientId, GetServersResult, InstallRequest, PreflightRequest } from '../../shared/types'
 import type { ClientAdapter } from '../clients/types'
 
 const adaptersById: Record<ClientId, ClientAdapter> = {
@@ -39,6 +40,10 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('klik:getClients', () => detectInstalledClients())
 
   ipcMain.handle('klik:getInstalled', () => listInstalled(app.getPath('userData')))
+
+  ipcMain.handle('klik:preflight', (_event, request: PreflightRequest) =>
+    buildInstallPreview(request, { adaptersById })
+  )
 
   ipcMain.handle('klik:install', (_event, request: InstallRequest) =>
     installServer(request, {

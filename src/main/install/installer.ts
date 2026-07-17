@@ -58,7 +58,10 @@ export async function installServer(request: InstallRequest, deps: InstallerDeps
   for (const runtime of request.server.requiredRuntime) {
     if (isRuntimeAvailable(runtime)) continue
     const packageId = wingetPackageId(runtime)
-    if (!packageId) {
+    // Installing a runtime is a system-wide change, so it only happens when the user
+    // explicitly consented in the install preview. Without consent, the server is still
+    // written and the missing runtime is reported as a warning.
+    if (!packageId || !request.allowRuntimeInstall) {
       unmetRuntimeWarnings.push(runtime)
       continue
     }
