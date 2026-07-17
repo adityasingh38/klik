@@ -75,6 +75,32 @@ describe('normalizeRawServer', () => {
     const result = normalizeRawServer({ name: 'ai.example/empty', description: '', version: '1.0.0' } as any)
     expect(result).toBeNull()
   })
+
+  it('carries the first https icon and the website url through', () => {
+    const result = normalizeRawServer({
+      name: 'ai.example/icon',
+      description: 'Iconed server',
+      version: '1.0.0',
+      websiteUrl: 'https://example.com/product',
+      icons: [{ src: 'https://cdn.example.com/logo.png', mimeType: 'image/png' }],
+      remotes: [{ type: 'streamable-http', url: 'https://example.com/mcp' }]
+    } as any)
+    expect(result).toMatchObject({
+      iconUrl: 'https://cdn.example.com/logo.png',
+      websiteUrl: 'https://example.com/product'
+    })
+  })
+
+  it('skips non-https icons rather than emitting a mixed-content source', () => {
+    const result = normalizeRawServer({
+      name: 'ai.example/insecure',
+      description: 'Insecure icon',
+      version: '1.0.0',
+      icons: [{ src: 'http://cdn.example.com/logo.png' }, { src: 'https://cdn.example.com/safe.png' }],
+      remotes: [{ type: 'streamable-http', url: 'https://example.com/mcp' }]
+    } as any)
+    expect(result?.iconUrl).toBe('https://cdn.example.com/safe.png')
+  })
 })
 
 describe('loadRegistry', () => {

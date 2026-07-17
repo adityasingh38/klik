@@ -1,0 +1,221 @@
+[
+  {
+    "id": "io.modelcontextprotocol/server-memory",
+    "title": "Memory",
+    "description": "Persistent knowledge graph memory — lets a model remember facts about you across conversations.",
+    "version": "2026.7.4",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-memory"],
+    "requiredRuntime": ["node"],
+    "requiredEnv": [],
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers",
+    "websiteUrl": "https://modelcontextprotocol.io",
+    "verified": true,
+    "tested": false,
+    "category": "Productivity",
+    "warnings": []
+  },
+  {
+    "id": "io.modelcontextprotocol/server-sequential-thinking",
+    "title": "Sequential Thinking",
+    "description": "Structured step-by-step reasoning for complex problems, with revision and branching.",
+    "version": "2026.7.4",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+    "requiredRuntime": ["node"],
+    "requiredEnv": [],
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers",
+    "websiteUrl": "https://modelcontextprotocol.io",
+    "verified": true,
+    "tested": false,
+    "category": "AI & Models",
+    "warnings": []
+  },
+  {
+    "id": "io.modelcontextprotocol/server-everything",
+    "title": "Everything (reference server)",
+    "description": "Anthropic's reference server exercising every MCP feature — prompts, tools, resources, sampling. Useful for testing a client.",
+    "version": "2026.7.4",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-everything"],
+    "requiredRuntime": ["node"],
+    "requiredEnv": [],
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers",
+    "websiteUrl": "https://modelcontextprotocol.io",
+    "verified": true,
+    "tested": false,
+    "category": "Dev Tools",
+    "warnings": ["A demo/test server, not something you need day to day."]
+  },
+  {
+    "id": "com.microsoft/playwright-mcp",
+    "title": "Playwright",
+    "description": "Microsoft's browser automation — navigate, click, fill forms, and read pages via the accessibility tree.",
+    "version": "0.0.78",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@playwright/mcp@latest"],
+    "requiredRuntime": ["node"],
+    "requiredEnv": [],
+    "repositoryUrl": "https://github.com/microsoft/playwright-mcp",
+    "websiteUrl": "https://playwright.dev",
+    "verified": true,
+    "tested": false,
+    "category": "Browser & Web",
+    "warnings": ["Downloads a browser on first run and can visit any site the model asks for."]
+  },
+  {
+    "id": "com.upstash/context7",
+    "title": "Context7",
+    "description": "Up-to-date documentation and code examples for any library, pulled in on demand.",
+    "version": "3.2.4",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@upstash/context7-mcp@latest"],
+    "requiredRuntime": ["node"],
+    "requiredEnv": [],
+    "repositoryUrl": "https://github.com/upstash/context7",
+    "websiteUrl": "https://context7.com",
+    "verified": true,
+    "tested": false,
+    "category": "Docs",
+    "warnings": []
+  },
+  {
+    "id": "com.notion/notion-mcp-server",
+    "title": "Notion",
+    "description": "Official Notion server — search, read, create, and update pages and databases.",
+    "version": "2.4.1",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@notionhq/notion-mcp-server"],
+    "requiredRuntime": ["node"],
+    "requiredEnv": [
+      {
+        "name": "NOTION_TOKEN",
+        "description": "Notion integration token. Create one at notion.so/profile/integrations, then share the pages you want it to reach.",
+        "isRequired": true,
+        "isSecret": true
+      }
+    ],
+    "repositoryUrl": "https://github.com/makenotion/notion-mcp-server",
+    "websiteUrl": "https://developers.notion.com",
+    "verified": true,
+    "tested": false,
+    "category": "Docs",
+    "warnings": ["Reaches every page you share with the integration."]
+  },
+  {
+    "id": "com.firecrawl/firecrawl-mcp",
+    "title": "Firecrawl",
+    "description": "Scrape, crawl, and search the web, turning pages into clean markdown for the model.",
+    "version": "3.22.3",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "firecrawl-mcp"],
+    "requiredRuntime": ["node"],
+    "requiredEnv": [
+      {
+        "name": "FIRECRAWL_API_KEY",
+        "description": "Firecrawl API key from firecrawl.dev.",
+        "isRequired": true,
+        "isSecret": true
+      }
+    ],
+    "repositoryUrl": "https://github.com/firecrawl/firecrawl-mcp-server",
+    "websiteUrl": "https://firecrawl.dev",
+    "verified": true,
+    "tested": false,
+    "category": "Browser & Web",
+    "warnings": []
+  },
+  {
+    "id": "ai.exa/exa-mcp-server",
+    "title": "Exa Search",
+    "description": "Neural web search built for AI — real-time results with full page contents.",
+    "version": "3.2.1",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "exa-mcp-server"],
+    "requiredRuntime": ["node"],
+    "requiredEnv": [
+      {
+        "name": "EXA_API_KEY",
+        "description": "Exa API key from dashboard.exa.ai.",
+        "isRequired": true,
+        "isSecret": true
+      }
+    ],
+    "repositoryUrl": "https://github.com/exa-labs/exa-mcp-server",
+    "websiteUrl": "https://exa.ai",
+    "verified": true,
+    "tested": false,
+    "category": "Search",
+    "warnings": []
+  },
+  {
+    "id": "com.figma/figma-developer-mcp",
+    "title": "Figma",
+    "description": "Read Figma files and turn frames into code — layout, styles, and component structure.",
+    "version": "0.13.2",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "figma-developer-mcp", "--stdio"],
+    "requiredRuntime": ["node"],
+    "requiredEnv": [
+      {
+        "name": "FIGMA_API_KEY",
+        "description": "Figma personal access token from your account settings.",
+        "isRequired": true,
+        "isSecret": true
+      }
+    ],
+    "repositoryUrl": "https://github.com/GLips/Figma-Context-MCP",
+    "websiteUrl": "https://www.framelink.ai",
+    "verified": true,
+    "tested": false,
+    "category": "Dev Tools",
+    "warnings": []
+  },
+  {
+    "id": "dev.flux159/mcp-server-kubernetes",
+    "title": "Kubernetes",
+    "description": "Manage Kubernetes clusters — inspect pods, deployments, logs, and apply manifests.",
+    "version": "4.0.4",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "mcp-server-kubernetes"],
+    "requiredRuntime": ["node"],
+    "requiredEnv": [],
+    "repositoryUrl": "https://github.com/Flux159/mcp-server-kubernetes",
+    "websiteUrl": "https://github.com/Flux159/mcp-server-kubernetes",
+    "verified": true,
+    "tested": false,
+    "category": "Cloud & DevOps",
+    "warnings": [
+      "Uses your current kubeconfig context — it can act on whatever cluster kubectl currently points at, including production."
+    ]
+  },
+  {
+    "id": "com.browsermcp/mcp",
+    "title": "Browser MCP",
+    "description": "Automate your own logged-in browser via a companion extension, reusing your real sessions.",
+    "version": "0.1.3",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@browsermcp/mcp@latest"],
+    "requiredRuntime": ["node"],
+    "requiredEnv": [],
+    "repositoryUrl": "https://github.com/browsermcp/mcp",
+    "websiteUrl": "https://browsermcp.io",
+    "verified": true,
+    "tested": false,
+    "category": "Browser & Web",
+    "warnings": [
+      "Requires the Browser MCP extension and drives your real browser session — it acts as you, on sites you're already logged into."
+    ]
+  }
+]

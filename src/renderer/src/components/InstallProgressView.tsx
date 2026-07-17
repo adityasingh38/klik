@@ -46,7 +46,7 @@ export function InstallProgressView(props: InstallProgressViewProps): React.JSX.
       <div className="flex flex-col gap-2">
         {results.map((result, index) => (
           <BlurFade key={`${result.serverId}-${result.clientId}-${index}`} direction="up" duration={0.25}>
-            <div className="flex min-w-0 items-center justify-between gap-3 rounded-md bg-card px-3 py-2">
+            <div className="surface-raised flex min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2.5">
               <span className="truncate text-sm">
                 {result.serverId} &rarr; {result.clientId}
               </span>

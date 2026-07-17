@@ -16,6 +16,7 @@
     "ui": "@/components/ui"
   },
   "registries": {
-    "@magicui": "https://magicui.design/r/{name}"
+    "@magicui": "https://magicui.design/r/{name}",
+    "@coss": "https://coss.com/ui/r/{name}.json"
   }
 }

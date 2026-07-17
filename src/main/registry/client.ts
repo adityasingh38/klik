@@ -24,6 +24,12 @@ interface RawRemote {
   url: string
 }
 
+interface RawIcon {
+  src: string
+  mimeType?: string
+  sizes?: string[]
+}
+
 interface RawServer {
   name: string
   title?: string
@@ -32,6 +38,8 @@ interface RawServer {
   repository?: { url: string }
   packages?: RawPackage[]
   remotes?: RawRemote[]
+  icons?: RawIcon[]
+  websiteUrl?: string
 }
 
 interface RawEntry {
@@ -69,9 +77,19 @@ function normalizeEnvVars(pkg: RawPackage): RegistryEnvVar[] {
   }))
 }
 
+/**
+ * The registry allows several icons per server; take the first https one. Non-https
+ * sources are dropped rather than rendered — a logo is never worth a mixed-content load.
+ */
+function pickIconUrl(raw: RawServer): string | undefined {
+  return raw.icons?.find((icon) => icon.src.startsWith('https://'))?.src
+}
+
 export function normalizeRawServer(raw: RawServer): RegistryServerEntry | null {
   const pkg = raw.packages?.[0]
   const remote = raw.remotes?.[0]
+  const iconUrl = pickIconUrl(raw)
+  const websiteUrl = raw.websiteUrl
 
   if (pkg) {
     const { command, args, runtime } = commandForPackage(pkg)
@@ -85,7 +103,9 @@ export function normalizeRawServer(raw: RawServer): RegistryServerEntry | null {
       args,
       requiredRuntime: [runtime],
       requiredEnv: normalizeEnvVars(pkg),
-      repositoryUrl: raw.repository?.url
+      repositoryUrl: raw.repository?.url,
+      iconUrl,
+      websiteUrl
     }
   }
 
@@ -99,7 +119,9 @@ export function normalizeRawServer(raw: RawServer): RegistryServerEntry | null {
       url: remote.url,
       requiredRuntime: [],
       requiredEnv: [],
-      repositoryUrl: raw.repository?.url
+      repositoryUrl: raw.repository?.url,
+      iconUrl,
+      websiteUrl
     }
   }
 
