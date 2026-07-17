@@ -329,6 +329,7 @@ export default function App(): React.JSX.Element {
           open={detailOpen}
           onOpenChange={setDetailOpen}
           isInstalled={detailServer ? installedServerIds.includes(detailServer.id) : false}
+          detectedClientIds={clients.filter((c) => c.installed).map((c) => c.id)}
           onInstall={installSingle}
           onUninstall={handleUninstall}
         />

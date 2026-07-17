@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { BlurFade } from '@/components/ui/blur-fade'
 import { ShimmerButton } from '@/components/ui/shimmer-button'
 import { ServerLogo } from '../components/ServerLogo'
+import { HostCompat } from '../components/HostCompat'
 import { cn } from '@/lib/utils'
 import type { ClientId, ClientInfo, MergedServerEntry } from '../../../shared/types'
 
@@ -98,6 +99,7 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
   }
 
   const installedClients = clients.filter((c) => c.installed)
+  const detectedClientIds = installedClients.map((c) => c.id)
 
   return (
     <div className="flex h-full flex-col">
@@ -197,6 +199,12 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
                       ))}
                       <MetaTag>{server.category}</MetaTag>
                     </span>
+                    <HostCompat
+                      transport={server.transport}
+                      detectedClientIds={detectedClientIds}
+                      variant="inline"
+                      className="mt-1.5"
+                    />
                     </span>
                   </button>
                   <div className="flex shrink-0 items-center gap-2">
