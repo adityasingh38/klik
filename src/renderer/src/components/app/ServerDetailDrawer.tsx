@@ -14,13 +14,15 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { ServerLogo } from '../ServerLogo'
-import type { MergedServerEntry } from '../../../../shared/types'
+import { HostCompat } from '../HostCompat'
+import type { ClientId, MergedServerEntry } from '../../../../shared/types'
 
 interface ServerDetailDrawerProps {
   server: MergedServerEntry | null
   open: boolean
   onOpenChange: (open: boolean) => void
   isInstalled: boolean
+  detectedClientIds: ClientId[]
   onInstall: (server: MergedServerEntry) => void
   onUninstall: (serverId: string) => void
 }
@@ -35,7 +37,7 @@ function Meta({ label, value }: { label: string; value: React.ReactNode }): Reac
 }
 
 export function ServerDetailDrawer(props: ServerDetailDrawerProps): React.JSX.Element | null {
-  const { server, open, onOpenChange, isInstalled, onInstall, onUninstall } = props
+  const { server, open, onOpenChange, isInstalled, detectedClientIds, onInstall, onUninstall } = props
   if (!server) return null
 
   const requiredEnv = server.requiredEnv.filter((e) => e.isRequired)
@@ -71,6 +73,13 @@ export function ServerDetailDrawer(props: ServerDetailDrawerProps): React.JSX.El
             <Meta label="Version" value={server.version} />
             <Meta label="Runtime" value={server.requiredRuntime.join(', ') || '—'} />
           </div>
+
+          <HostCompat
+            transport={server.transport}
+            detectedClientIds={detectedClientIds}
+            variant="detail"
+            className="rounded-lg border border-border bg-card/60 p-4"
+          />
 
           {server.curation?.warnings && server.curation.warnings.length > 0 && (
             <div className="flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3">

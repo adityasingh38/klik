@@ -17,9 +17,13 @@ import { ServerDetailDrawer } from './components/app/ServerDetailDrawer'
 import { CommandPalette } from './components/app/CommandPalette'
 import { InstallPreviewDialog } from './components/app/InstallPreviewDialog'
 import { DiscoverView } from './views/DiscoverView'
+import { SkillsView } from './views/SkillsView'
+import { PluginsView } from './views/PluginsView'
 import { InstalledView } from './views/InstalledView'
-import { ClientsView } from './views/ClientsView'
+import { ToolsView } from './views/ToolsView'
 import { SettingsView } from './views/SettingsView'
+import { SKILLS_CATALOG } from './data/skillsCatalog'
+import { PLUGINS_CATALOG } from './data/pluginsCatalog'
 import { InstallProgressView } from './components/InstallProgressView'
 import { SecretPromptDialog } from './components/SecretPromptDialog'
 import { klikApi } from './api/klikApi'
@@ -31,11 +35,14 @@ import type {
   InstallStepResult,
   MergedServerEntry
 } from '../../shared/types'
+import type { DetectedTool } from '../../shared/catalog'
 
 const SECTION_TITLES: Record<AppSection, { title: string; subtitle: string }> = {
-  discover: { title: 'Discover', subtitle: 'Browse and install MCP servers' },
-  installed: { title: 'Installed', subtitle: 'Servers running in your clients' },
-  clients: { title: 'Clients', subtitle: 'Detected MCP clients and install targets' },
+  mcp: { title: 'MCP Servers', subtitle: 'Browse and install MCP servers' },
+  skills: { title: 'Skills', subtitle: 'On-demand capabilities for your AI tools' },
+  plugins: { title: 'Plugins', subtitle: 'Marketplace bundles: commands, agents, and more' },
+  installed: { title: 'Installed', subtitle: 'Servers running in your tools' },
+  tools: { title: 'Tools', subtitle: 'Detected AI tools and install targets' },
   settings: { title: 'Settings', subtitle: 'Registry, appearance, and about' }
 }
 
@@ -51,7 +58,12 @@ export default function App(): React.JSX.Element {
   const [selectedServerIds, setSelectedServerIds] = useState<string[]>([])
   const [selectedClientIds, setSelectedClientIds] = useState<ClientId[]>([])
 
-  const [section, setSection] = useState<AppSection>('discover')
+  const [section, setSection] = useState<AppSection>('mcp')
+  const [tools, setTools] = useState<DetectedTool[]>([])
+  const detectedToolIds = useMemo(
+    () => tools.filter((t) => t.installed).map((t) => t.id),
+    [tools]
+  )
   const [detailServer, setDetailServer] = useState<MergedServerEntry | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -107,6 +119,7 @@ export default function App(): React.JSX.Element {
       setClients(fetched)
       setSelectedClientIds(fetched.filter((c) => c.installed).map((c) => c.id))
     })
+    klikApi.getTools().then(setTools)
     refreshInstalled()
   }, [loadServers, refreshInstalled])
 
@@ -234,8 +247,10 @@ export default function App(): React.JSX.Element {
           active={section}
           onSelect={setSection}
           serverCount={servers.length}
+          skillCount={SKILLS_CATALOG.length}
+          pluginCount={PLUGINS_CATALOG.length}
           installedCount={installedRecords.length}
-          clientCount={clients.filter((c) => c.installed).length}
+          toolCount={clients.filter((c) => c.installed).length}
         />
 
         <SidebarInset className="relative overflow-hidden">
@@ -249,7 +264,7 @@ export default function App(): React.JSX.Element {
               <span className="truncate font-heading text-sm font-semibold text-foreground">{meta.title}</span>
               <span className="hidden truncate text-xs text-muted-foreground sm:inline">{meta.subtitle}</span>
             </div>
-            {fromCache && section === 'discover' && (
+            {fromCache && section === 'mcp' && (
               <span className="no-drag ml-1 flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-2 py-0.5 text-[10px] text-muted-foreground">
                 <span className="size-1.5 animate-pulse rounded-full bg-primary" />
                 cached
@@ -267,7 +282,7 @@ export default function App(): React.JSX.Element {
 
           {/* Content */}
           <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-            {section === 'discover' && (
+            {section === 'mcp' && (
               <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6 pt-5">
                 <DiscoverView
                   servers={servers}
@@ -285,7 +300,19 @@ export default function App(): React.JSX.Element {
               </div>
             )}
 
-            {section !== 'discover' && (
+            {section === 'skills' && (
+              <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6 pt-5">
+                <SkillsView detectedToolIds={detectedToolIds} tools={tools} />
+              </div>
+            )}
+
+            {section === 'plugins' && (
+              <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6 pt-5">
+                <PluginsView detectedToolIds={detectedToolIds} />
+              </div>
+            )}
+
+            {(section === 'installed' || section === 'tools' || section === 'settings') && (
               <div className="h-full overflow-y-auto px-6 py-6">
                 <div className="mx-auto w-full max-w-3xl">
                   {section === 'installed' && (
@@ -295,12 +322,12 @@ export default function App(): React.JSX.Element {
                       clients={clients}
                       onUninstall={handleUninstall}
                       onOpenServer={openServer}
-                      onGoDiscover={() => setSection('discover')}
+                      onGoDiscover={() => setSection('mcp')}
                     />
                   )}
-                  {section === 'clients' && (
-                    <ClientsView
-                      clients={clients}
+                  {section === 'tools' && (
+                    <ToolsView
+                      tools={tools}
                       selectedClientIds={selectedClientIds}
                       onToggleClient={(id) =>
                         setSelectedClientIds((prev) =>
@@ -329,6 +356,7 @@ export default function App(): React.JSX.Element {
           open={detailOpen}
           onOpenChange={setDetailOpen}
           isInstalled={detailServer ? installedServerIds.includes(detailServer.id) : false}
+          detectedClientIds={clients.filter((c) => c.installed).map((c) => c.id)}
           onInstall={installSingle}
           onUninstall={handleUninstall}
         />

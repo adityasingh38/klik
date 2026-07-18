@@ -6,10 +6,26 @@ import { claudeDesktopAdapter } from '../clients/claudeDesktop'
 import { cursorAdapter } from '../clients/cursor'
 import { vscodeAdapter } from '../clients/vscode'
 import { detectInstalledClients } from '../clients/detect'
+import { detectTools } from '../tools/detect'
 import { listInstalled } from '../install/state'
 import { installServer, uninstallServer } from '../install/installer'
 import { buildInstallPreview } from '../install/preflight'
+import { buildSkillInstallPreview } from '../skills/preflight'
+import { installSkill, uninstallSkill } from '../skills/installer'
+import { listInstalledSkills } from '../skills/state'
+import {
+  buildPluginInstallPreview,
+  installPluginEntry,
+  uninstallPluginEntry
+} from '../plugins/installer'
+import { listInstalledPlugins } from '../plugins/cli'
 import type { ClientId, GetServersResult, InstallRequest, PreflightRequest } from '../../shared/types'
+import type {
+  PluginInstallRequest,
+  PluginPreflightRequest,
+  SkillInstallRequest,
+  SkillPreflightRequest
+} from '../../shared/catalog'
 import type { ClientAdapter } from '../clients/types'
 
 const adaptersById: Record<ClientId, ClientAdapter> = {
@@ -67,4 +83,41 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('klik:uninstall', (_event, serverId: string) =>
     uninstallServer(serverId, { adaptersById, userDataDir: app.getPath('userData') })
   )
+
+  // --- Skills -------------------------------------------------------------
+
+  ipcMain.handle('klik:getTools', () => detectTools())
+
+  ipcMain.handle('klik:getInstalledSkills', () => listInstalledSkills(app.getPath('userData')))
+
+  ipcMain.handle('klik:skillPreflight', (_event, request: SkillPreflightRequest) =>
+    buildSkillInstallPreview(request, { tools: detectTools() })
+  )
+
+  ipcMain.handle('klik:installSkill', (_event, request: SkillInstallRequest) =>
+    installSkill(request, {
+      tools: detectTools(),
+      userDataDir: app.getPath('userData'),
+      now: () => new Date().toISOString()
+    })
+  )
+
+  ipcMain.handle('klik:uninstallSkill', (_event, skillId: string) =>
+    uninstallSkill(skillId, { tools: detectTools(), userDataDir: app.getPath('userData') })
+  )
+
+  // --- Plugins ------------------------------------------------------------
+  // Delegated to Claude Code's own CLI, so it stays the source of truth.
+
+  ipcMain.handle('klik:getInstalledPlugins', () => listInstalledPlugins())
+
+  ipcMain.handle('klik:pluginPreflight', (_event, request: PluginPreflightRequest) =>
+    buildPluginInstallPreview(request)
+  )
+
+  ipcMain.handle('klik:installPlugin', (_event, request: PluginInstallRequest) =>
+    installPluginEntry(request)
+  )
+
+  ipcMain.handle('klik:uninstallPlugin', (_event, pluginId: string) => uninstallPluginEntry(pluginId))
 }
