@@ -3,15 +3,29 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils'
 import { toolBrand, toolLogoUrl, type ToolBrand } from '../../../shared/tools'
 
-/** The accent dot — the fallback mark when a vendor logo can't be loaded. */
-function AccentDot({ accent, detected }: { accent: string; detected: boolean }): React.JSX.Element {
+/**
+ * The accent dot — the fallback mark when a vendor logo can't be loaded. It scales
+ * with the mark it stands in for; a fixed-size dot inside a larger slot reads as a
+ * rendering fault rather than a deliberate fallback.
+ */
+function AccentDot({
+  accent,
+  detected,
+  size = 6
+}: {
+  accent: string
+  detected: boolean
+  size?: number
+}): React.JSX.Element {
   return (
     <span
       aria-hidden
-      className="size-1.5 shrink-0 rounded-full"
+      className="shrink-0 rounded-full"
       style={{
+        width: size,
+        height: size,
         backgroundColor: detected ? accent : 'transparent',
-        boxShadow: `inset 0 0 0 1.5px ${accent}${detected ? '' : 'b0'}`
+        boxShadow: `inset 0 0 0 ${Math.max(1.5, size / 7)}px ${accent}${detected ? '' : 'b0'}`
       }}
     />
   )
@@ -43,7 +57,7 @@ export function ToolMark({
       className="relative inline-flex shrink-0 items-center justify-center"
       style={{ width: size, height: size }}
     >
-      {status !== 'ok' && <AccentDot accent={brand.accent} detected={detected} />}
+      {status !== 'ok' && <AccentDot accent={brand.accent} detected={detected} size={Math.round(size * 0.62)} />}
       {src && status !== 'failed' && (
         <img
           src={src}

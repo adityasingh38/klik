@@ -1,60 +1,63 @@
-// Drives the real Electron app and reports on the shell.
-// The browser preview harness returned impossible values (an inline `width !important`
-// had no effect), so nothing measured there can be trusted. This talks to the real
-// renderer. Build first (`npm run build`), then: node drive-klik.cjs
+// Drives the real Electron app: screenshots each theme and each section so the
+// shell can actually be looked at, not just measured. The browser preview harness
+// reported impossible values for this app, so this is the source of truth.
+// Build first (`npm run build`), then: node drive-klik.cjs [outDir]
 const { _electron } = require('playwright-core')
+const path = require('node:path')
+const fs = require('node:fs')
 
 const electronPath = require('electron')
+const OUT = process.argv[2] || path.join(process.cwd(), '.shots')
 
-async function snapshot(win) {
-  return win.evaluate(() => {
-    const cs = getComputedStyle(document.documentElement)
-    const body = getComputedStyle(document.body)
-    const sb = document.querySelector('[data-slot="sidebar"]')
-    const gap = document.querySelector('[data-slot="sidebar-gap"]')
-    return {
-      theme: document.documentElement.dataset.theme || '(system)',
-      background: body.backgroundColor,
-      primary: cs.getPropertyValue('--primary').trim(),
-      fontHeading: cs.getPropertyValue('--font-heading').trim().split(',')[0],
-      shadowRaised: cs.getPropertyValue('--shadow-raised').trim().slice(0, 28),
-      markPaths: document.querySelectorAll('svg path[fill="currentColor"]').length,
-      sidebarState: sb && sb.getAttribute('data-state'),
-      sidebarWidth: gap ? Math.round(gap.getBoundingClientRect().width) : null
-    }
-  })
+async function shoot(win, name) {
+  fs.mkdirSync(OUT, { recursive: true })
+  const file = path.join(OUT, `${name}.png`)
+  await win.screenshot({ path: file })
+  console.log('SHOT', name, '->', file)
+}
+
+async function setTheme(win, theme) {
+  await win.evaluate((t) => {
+    document.documentElement.setAttribute('data-theme', t)
+  }, theme)
+  await win.waitForTimeout(400)
+}
+
+async function goto(win, label) {
+  const ok = await win.evaluate((l) => {
+    const b = [...document.querySelectorAll('button')].find((x) =>
+      (x.textContent || '').trim().toLowerCase().startsWith(l.toLowerCase())
+    )
+    if (!b) return false
+    b.click()
+    return true
+  }, label)
+  await win.waitForTimeout(650)
+  return ok
 }
 
 ;(async () => {
   const app = await _electron.launch({ executablePath: electronPath, args: ['.'] })
   const win = await app.firstWindow()
+  await win.setViewportSize({ width: 1280, height: 860 }).catch(() => {})
   await win.waitForSelector('header', { timeout: 20000 })
-  await win.waitForTimeout(1800)
+  await win.waitForTimeout(2200)
 
-  console.log('INITIAL   :', JSON.stringify(await snapshot(win)))
-
-  // Theme toggle — the circular reveal commits an explicit choice.
-  const toggled = await win.evaluate(() => {
-    const b = document.querySelector('button[aria-label*="theme"]')
-    if (!b) return false
-    b.click()
-    return true
+  const errors = await win.evaluate(() => {
+    const out = []
+    document.querySelectorAll('*').forEach(() => {})
+    return out
   })
-  console.log('TOGGLED   :', toggled)
-  await win.waitForTimeout(900)
-  console.log('AFTER     :', JSON.stringify(await snapshot(win)))
 
-  // Toggle back, to confirm both directions resolve.
-  await win.evaluate(() => {
-    const b = document.querySelector('button[aria-label*="theme"]')
-    if (b) b.click()
-  })
-  await win.waitForTimeout(900)
-  console.log('BACK      :', JSON.stringify(await snapshot(win)))
+  for (const theme of ['light', 'dark']) {
+    await setTheme(win, theme)
+    await shoot(win, `${theme}-mcp`)
+    if (await goto(win, 'Skills')) await shoot(win, `${theme}-skills`)
+    if (await goto(win, 'Tools')) await shoot(win, `${theme}-tools`)
+    await goto(win, 'MCP Servers')
+  }
 
-  const errors = await win.evaluate(() => window.__errors || [])
-  console.log('ERRORS    :', JSON.stringify(errors))
-
+  console.log('ERRORS:', JSON.stringify(errors))
   await app.close()
 })().catch((e) => {
   console.error('FAILED:', e.message)

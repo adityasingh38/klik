@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Search } from 'lucide-react'
-import { DotPattern } from '@/components/ui/dot-pattern'
-import { Confetti, type ConfettiRef } from '@/components/ui/confetti'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Kbd } from '@/components/ui/kbd'
@@ -88,21 +86,7 @@ export default function App(): React.JSX.Element {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const [allowRuntimeInstall, setAllowRuntimeInstall] = useState(false)
 
-  const confettiRef = useRef<ConfettiRef>(null)
-  const hasFiredConfettiRef = useRef(false)
-
   const installedServerIds = useMemo(() => installedRecords.map((r) => r.serverId), [installedRecords])
-
-  const installSucceeded =
-    results.length > 0 && !isInstalling && results.every((r) => r.status === 'done')
-
-  useEffect(() => {
-    if (installSucceeded && !hasFiredConfettiRef.current) {
-      hasFiredConfettiRef.current = true
-      confettiRef.current?.fire({ particleCount: 80, spread: 70, colors: ['#e0873f', '#eeeae2', '#2c2521'] })
-    }
-    if (!installSucceeded) hasFiredConfettiRef.current = false
-  }, [installSucceeded])
 
   const refreshInstalled = useCallback((): void => {
     klikApi.getInstalled().then(setInstalledRecords)
@@ -307,9 +291,6 @@ export default function App(): React.JSX.Element {
         />
 
         <SidebarInset className="relative overflow-hidden">
-          <DotPattern className="text-border/20" />
-          <Confetti ref={confettiRef} manualstart className="pointer-events-none fixed inset-0 z-50 size-full" />
-
           {/* Titlebar / header — draggable, leaves room for native window controls (right). */}
           <header className="app-drag relative z-20 flex h-10 shrink-0 items-center gap-3 border-b border-border/60 px-3 pr-36">
             <Tooltip>
@@ -360,7 +341,7 @@ export default function App(): React.JSX.Element {
           {/* Content */}
           <div className="relative z-10 flex min-h-0 flex-1 flex-col">
             {section === 'mcp' && (
-              <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6 pt-5">
+              <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-8 pt-6">
                 <DiscoverView
                   servers={servers}
                   isLoadingServers={isLoadingServers}
@@ -378,7 +359,7 @@ export default function App(): React.JSX.Element {
             )}
 
             {section === 'skills' && (
-              <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6 pt-5">
+              <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-8 pt-6">
                 <SkillsView
                   detectedToolIds={detectedToolIds}
                   tools={tools}
@@ -389,7 +370,7 @@ export default function App(): React.JSX.Element {
             )}
 
             {section === 'plugins' && (
-              <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6 pt-5">
+              <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-8 pt-6">
                 <PluginsView
                   detectedToolIds={detectedToolIds}
                   focusItemId={focusItem?.kind === 'plugin' ? focusItem.id : null}
@@ -399,8 +380,8 @@ export default function App(): React.JSX.Element {
             )}
 
             {(section === 'installed' || section === 'tools' || section === 'settings') && (
-              <div className="h-full overflow-y-auto px-6 py-6">
-                <div className="mx-auto w-full max-w-3xl">
+              <div className="h-full overflow-y-auto px-8 py-7">
+                <div className="mx-auto w-full max-w-5xl">
                   {section === 'installed' && (
                     <InstalledView
                       servers={servers}
@@ -472,10 +453,10 @@ export default function App(): React.JSX.Element {
         )}
 
         <Dialog open={phase === 'progress'} onOpenChange={(open: boolean) => { if (!open && !isInstalling) finishInstall() }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="font-heading">Installing servers</DialogTitle>
-              <DialogDescription>Writing MCP configuration into your selected clients.</DialogDescription>
+          <DialogContent className="max-w-sm">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Installing</DialogTitle>
+              <DialogDescription>Writing configuration into your selected apps.</DialogDescription>
             </DialogHeader>
             <InstallProgressView results={results} isInstalling={isInstalling} onDone={finishInstall} />
           </DialogContent>
