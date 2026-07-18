@@ -119,6 +119,45 @@ export interface InstalledSkillRecord {
 }
 
 /**
+ * Everything a plugin install would do. Klik drives Claude Code's own CLI, so the
+ * disclosure is the literal commands that will run — the same standard as showing
+ * an MCP server's command line before writing it.
+ */
+export interface PluginInstallPreview {
+  pluginId: string
+  title: string
+  marketplace: string
+  marketplaceSource: string
+  /** Exact commands, in order, that confirming will execute. */
+  commands: string[]
+  /** False when the marketplace must be added first — a separate trust decision. */
+  marketplaceAlreadyKnown: boolean
+  alreadyInstalled: boolean
+  /** False when the Claude Code CLI isn't available; install can't proceed. */
+  cliAvailable: boolean
+  warnings: string[]
+  verified: boolean
+}
+
+export interface PluginPreflightRequest {
+  plugin: PluginEntry
+}
+
+export interface PluginInstallRequest {
+  plugin: PluginEntry
+  /** Explicit consent to register a third-party marketplace Claude Code doesn't know. */
+  allowMarketplaceAdd?: boolean
+}
+
+export interface PluginInstallStepResult {
+  pluginId: string
+  /** Human-readable step, e.g. the command that ran. */
+  step: string
+  status: 'pending' | 'running' | 'done' | 'error'
+  message?: string
+}
+
+/**
  * Normalized shape the shared catalog list/card renders, regardless of kind. Views
  * map their own entries (MergedServerEntry / SkillEntry / PluginEntry) into this so
  * one CatalogRow can render all three without knowing their internals.

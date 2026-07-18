@@ -5,7 +5,8 @@ import type { PluginEntry } from '../../../shared/catalog'
  * (commands, agents, hooks, skills, MCP servers). Today's plugin ecosystems are
  * Claude Code-centric, so these are real Claude Code marketplace plugins with their
  * real source repos; `compatibleTools` keeps the model open to other tools as their
- * plugin formats stabilize. Phase 3 wires the actual add-marketplace + enable engine.
+ * plugin formats stabilize. Ids and marketplaces here were verified against
+ * `claude plugin list --available --json` rather than assumed.
  */
 export const PLUGINS_CATALOG: PluginEntry[] = [
   {
@@ -13,7 +14,7 @@ export const PLUGINS_CATALOG: PluginEntry[] = [
     title: 'Feature Dev',
     description: 'Guided feature development with codebase understanding and architecture-first agents.',
     marketplace: 'claude-plugins-official',
-    marketplaceUrl: 'https://github.com/anthropics/claude-code',
+    marketplaceUrl: 'https://github.com/anthropics/claude-plugins-official',
     author: 'Anthropic',
     repositoryUrl: 'https://github.com/anthropics/claude-code',
     category: 'Development',
@@ -26,7 +27,7 @@ export const PLUGINS_CATALOG: PluginEntry[] = [
     title: 'Code Review',
     description: 'Review pull requests for correctness, security, and performance with confidence-based filtering.',
     marketplace: 'claude-plugins-official',
-    marketplaceUrl: 'https://github.com/anthropics/claude-code',
+    marketplaceUrl: 'https://github.com/anthropics/claude-plugins-official',
     author: 'Anthropic',
     repositoryUrl: 'https://github.com/anthropics/claude-code',
     category: 'Development',
@@ -39,7 +40,7 @@ export const PLUGINS_CATALOG: PluginEntry[] = [
     title: 'Frontend Design',
     description: 'Guidance for distinctive, intentional visual design when building or reshaping UI.',
     marketplace: 'claude-plugins-official',
-    marketplaceUrl: 'https://github.com/anthropics/claude-code',
+    marketplaceUrl: 'https://github.com/anthropics/claude-plugins-official',
     author: 'Anthropic',
     repositoryUrl: 'https://github.com/anthropics/claude-code',
     category: 'Design',
@@ -78,7 +79,7 @@ export const PLUGINS_CATALOG: PluginEntry[] = [
     title: 'Vercel',
     description: 'Deploy, manage environments, and architect apps on Vercel from your AI client.',
     marketplace: 'claude-plugins-official',
-    marketplaceUrl: 'https://github.com/anthropics/claude-code',
+    marketplaceUrl: 'https://github.com/anthropics/claude-plugins-official',
     author: 'Vercel',
     repositoryUrl: 'https://github.com/vercel/vercel',
     category: 'Deployment',

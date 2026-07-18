@@ -11,11 +11,22 @@ import type {
 import type {
   DetectedTool,
   InstalledSkillRecord,
+  PluginInstallPreview,
+  PluginInstallRequest,
+  PluginInstallStepResult,
+  PluginPreflightRequest,
   SkillInstallPreview,
   SkillInstallRequest,
   SkillInstallStepResult,
   SkillPreflightRequest
 } from '../shared/catalog'
+
+interface InstalledPluginInfo {
+  id: string
+  version: string
+  enabled: boolean
+  installPath: string
+}
 
 const klikApi = {
   getServers: (): Promise<GetServersResult> => ipcRenderer.invoke('klik:getServers'),
@@ -31,7 +42,15 @@ const klikApi = {
     ipcRenderer.invoke('klik:skillPreflight', request),
   installSkill: (request: SkillInstallRequest): Promise<SkillInstallStepResult[]> =>
     ipcRenderer.invoke('klik:installSkill', request),
-  uninstallSkill: (skillId: string): Promise<void> => ipcRenderer.invoke('klik:uninstallSkill', skillId)
+  uninstallSkill: (skillId: string): Promise<void> => ipcRenderer.invoke('klik:uninstallSkill', skillId),
+
+  getInstalledPlugins: (): Promise<InstalledPluginInfo[]> => ipcRenderer.invoke('klik:getInstalledPlugins'),
+  pluginPreflight: (request: PluginPreflightRequest): Promise<PluginInstallPreview> =>
+    ipcRenderer.invoke('klik:pluginPreflight', request),
+  installPlugin: (request: PluginInstallRequest): Promise<PluginInstallStepResult[]> =>
+    ipcRenderer.invoke('klik:installPlugin', request),
+  uninstallPlugin: (pluginId: string): Promise<PluginInstallStepResult[]> =>
+    ipcRenderer.invoke('klik:uninstallPlugin', pluginId)
 }
 
 export type KlikApi = typeof klikApi

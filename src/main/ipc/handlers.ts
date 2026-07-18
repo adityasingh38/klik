@@ -13,8 +13,19 @@ import { buildInstallPreview } from '../install/preflight'
 import { buildSkillInstallPreview } from '../skills/preflight'
 import { installSkill, uninstallSkill } from '../skills/installer'
 import { listInstalledSkills } from '../skills/state'
+import {
+  buildPluginInstallPreview,
+  installPluginEntry,
+  uninstallPluginEntry
+} from '../plugins/installer'
+import { listInstalledPlugins } from '../plugins/cli'
 import type { ClientId, GetServersResult, InstallRequest, PreflightRequest } from '../../shared/types'
-import type { SkillInstallRequest, SkillPreflightRequest } from '../../shared/catalog'
+import type {
+  PluginInstallRequest,
+  PluginPreflightRequest,
+  SkillInstallRequest,
+  SkillPreflightRequest
+} from '../../shared/catalog'
 import type { ClientAdapter } from '../clients/types'
 
 const adaptersById: Record<ClientId, ClientAdapter> = {
@@ -94,4 +105,19 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('klik:uninstallSkill', (_event, skillId: string) =>
     uninstallSkill(skillId, { tools: detectTools(), userDataDir: app.getPath('userData') })
   )
+
+  // --- Plugins ------------------------------------------------------------
+  // Delegated to Claude Code's own CLI, so it stays the source of truth.
+
+  ipcMain.handle('klik:getInstalledPlugins', () => listInstalledPlugins())
+
+  ipcMain.handle('klik:pluginPreflight', (_event, request: PluginPreflightRequest) =>
+    buildPluginInstallPreview(request)
+  )
+
+  ipcMain.handle('klik:installPlugin', (_event, request: PluginInstallRequest) =>
+    installPluginEntry(request)
+  )
+
+  ipcMain.handle('klik:uninstallPlugin', (_event, pluginId: string) => uninstallPluginEntry(pluginId))
 }
