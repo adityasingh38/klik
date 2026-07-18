@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { ToolDot, ToolChip } from './ToolBadges'
 import { hostsForTransport, type McpHost } from '../../../shared/hosts'
 import type { ClientId, TransportKind } from '../../../shared/types'
 
@@ -12,36 +13,6 @@ interface HostCompatProps {
   /** inline only: how many chips before collapsing into "+N". */
   max?: number
   className?: string
-}
-
-/** A brand dot — a small ring in the host's accent, filled when detected. */
-function HostDot({ host, detected }: { host: McpHost; detected: boolean }): React.JSX.Element {
-  return (
-    <span
-      aria-hidden
-      className="size-1.5 shrink-0 rounded-full"
-      style={{
-        backgroundColor: detected ? host.accent : 'transparent',
-        boxShadow: `inset 0 0 0 1.5px ${host.accent}${detected ? '' : 'b0'}`
-      }}
-    />
-  )
-}
-
-function HostChip({ host, detected }: { host: McpHost; detected: boolean }): React.JSX.Element {
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors',
-        detected
-          ? 'border-border bg-elevated text-foreground'
-          : 'border-border/60 bg-card/60 text-muted-foreground'
-      )}
-    >
-      <HostDot host={host} detected={detected} />
-      {host.short}
-    </span>
-  )
 }
 
 export function HostCompat(props: HostCompatProps): React.JSX.Element | null {
@@ -71,7 +42,7 @@ export function HostCompat(props: HostCompatProps): React.JSX.Element | null {
         </span>
         {shown.map((host) => (
           <span key={host.id} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-            <HostDot host={host} detected={detected.includes(host)} />
+            <ToolDot accent={host.accent} detected={detected.includes(host)} />
             {host.short}
           </span>
         ))}
@@ -103,7 +74,7 @@ export function HostCompat(props: HostCompatProps): React.JSX.Element | null {
           </span>
           <div className="flex flex-wrap gap-1.5">
             {detected.map((host) => (
-              <HostChip key={host.id} host={host} detected />
+              <ToolChip key={host.id} brand={host} detected />
             ))}
           </div>
         </div>
@@ -117,7 +88,7 @@ export function HostCompat(props: HostCompatProps): React.JSX.Element | null {
           )}
           <div className="flex flex-wrap gap-1.5">
             {others.map((host) => (
-              <HostChip key={host.id} host={host} detected={false} />
+              <ToolChip key={host.id} brand={host} detected={false} />
             ))}
           </div>
         </div>

@@ -1,4 +1,5 @@
 import type { ClientId, TransportKind } from './types'
+import { TOOL_BRANDS } from './tools'
 
 /**
  * The well-known apps that speak MCP, and the transports each one can actually
@@ -13,16 +14,15 @@ import type { ClientId, TransportKind } from './types'
  * connectors, so it appears for `http` servers but not `stdio` ones — that gap is
  * real signal, not an omission.
  *
- * `clientId` is set only for hosts Klik can currently detect and write config into;
- * the rest are compatibility information the user can act on themselves.
+ * Brand identity (name/short/accent) comes from the shared {@link TOOL_BRANDS}
+ * registry so a host looks identical everywhere it appears. `clientId` is set only
+ * for hosts Klik can currently detect and write config into; the rest are
+ * compatibility information the user can act on themselves.
  */
 export interface McpHost {
   id: string
-  /** Full display name. */
   name: string
-  /** Compact label for dense chip rows. */
   short: string
-  /** Brand accent, used as a small colored mark — never as a fill. */
   accent: string
   /** App-level MCP transports this host can consume. */
   transports: TransportKind[]
@@ -30,17 +30,35 @@ export interface McpHost {
   clientId?: ClientId
 }
 
+interface HostSpec {
+  brandId: string
+  transports: TransportKind[]
+  clientId?: ClientId
+}
+
 /** Ordered by prominence — this is the order chips render in. */
-export const MCP_HOSTS: McpHost[] = [
-  { id: 'claude-desktop', name: 'Claude Desktop', short: 'Claude', accent: '#d97757', transports: ['stdio', 'http'], clientId: 'claude-desktop' },
-  { id: 'claude-code', name: 'Claude Code', short: 'Claude Code', accent: '#d97757', transports: ['stdio', 'http'] },
-  { id: 'cursor', name: 'Cursor', short: 'Cursor', accent: '#cfd2d6', transports: ['stdio', 'http'], clientId: 'cursor' },
-  { id: 'vscode', name: 'VS Code', short: 'VS Code', accent: '#3d9bd8', transports: ['stdio', 'http'], clientId: 'vscode' },
-  { id: 'windsurf', name: 'Windsurf', short: 'Windsurf', accent: '#3bb58a', transports: ['stdio', 'http'] },
-  { id: 'zed', name: 'Zed', short: 'Zed', accent: '#8b7fff', transports: ['stdio', 'http'] },
-  { id: 'cline', name: 'Cline', short: 'Cline', accent: '#6b8afd', transports: ['stdio', 'http'] },
-  { id: 'chatgpt', name: 'ChatGPT', short: 'ChatGPT', accent: '#10a37f', transports: ['http'] }
+const HOST_SPECS: HostSpec[] = [
+  { brandId: 'claude-desktop', transports: ['stdio', 'http'], clientId: 'claude-desktop' },
+  { brandId: 'claude-code', transports: ['stdio', 'http'] },
+  { brandId: 'cursor', transports: ['stdio', 'http'], clientId: 'cursor' },
+  { brandId: 'vscode', transports: ['stdio', 'http'], clientId: 'vscode' },
+  { brandId: 'windsurf', transports: ['stdio', 'http'] },
+  { brandId: 'zed', transports: ['stdio', 'http'] },
+  { brandId: 'cline', transports: ['stdio', 'http'] },
+  { brandId: 'chatgpt', transports: ['http'] }
 ]
+
+export const MCP_HOSTS: McpHost[] = HOST_SPECS.map((spec) => {
+  const brand = TOOL_BRANDS[spec.brandId]
+  return {
+    id: brand.id,
+    name: brand.name,
+    short: brand.short,
+    accent: brand.accent,
+    transports: spec.transports,
+    clientId: spec.clientId
+  }
+})
 
 /** The hosts that can run a server speaking the given transport. */
 export function hostsForTransport(transport: TransportKind): McpHost[] {
