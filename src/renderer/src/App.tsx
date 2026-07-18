@@ -4,7 +4,7 @@ import { DotPattern } from '@/components/ui/dot-pattern'
 import { Confetti, type ConfettiRef } from '@/components/ui/confetti'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { Kbd } from '@/components/ui/kbd'
+import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import {
   Dialog,
   DialogContent,
@@ -27,7 +27,7 @@ import { PLUGINS_CATALOG } from './data/pluginsCatalog'
 import { InstallProgressView } from './components/InstallProgressView'
 import { SecretPromptDialog } from './components/SecretPromptDialog'
 import { klikApi } from './api/klikApi'
-import { shortcut } from './lib/platform'
+import { MOD_KEY } from './lib/platform'
 import type {
   ClientId,
   ClientInfo,
@@ -261,9 +261,14 @@ export default function App(): React.JSX.Element {
           {/* Titlebar / header — draggable, leaves room for native window controls (right). */}
           <header className="app-drag relative z-20 flex h-10 shrink-0 items-center gap-3 border-b border-border/60 px-3 pr-36">
             <SidebarTrigger className="no-drag" />
+            {/* The title is short and always fits; the subtitle is what gives way. */}
             <div className="flex min-w-0 items-baseline gap-2">
-              <span className="truncate font-heading text-sm font-semibold text-foreground">{meta.title}</span>
-              <span className="hidden truncate text-xs text-muted-foreground sm:inline">{meta.subtitle}</span>
+              <span className="shrink-0 whitespace-nowrap font-heading text-sm font-semibold text-foreground">
+                {meta.title}
+              </span>
+              <span className="hidden min-w-0 truncate text-xs text-muted-foreground sm:inline">
+                {meta.subtitle}
+              </span>
             </div>
             {fromCache && section === 'mcp' && (
               <span className="no-drag ml-1 flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-2 py-0.5 text-[10px] text-muted-foreground">
@@ -277,7 +282,10 @@ export default function App(): React.JSX.Element {
             >
               <Search className="size-3.5" />
               <span className="hidden sm:inline">Search</span>
-              <Kbd className="ml-1">{shortcut('K')}</Kbd>
+              <KbdGroup className="ml-1">
+                <Kbd>{MOD_KEY}</Kbd>
+                <Kbd>K</Kbd>
+              </KbdGroup>
             </button>
           </header>
 

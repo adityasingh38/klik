@@ -9,10 +9,5 @@ import { klikApi } from '../api/klikApi'
  */
 export const IS_MAC = klikApi?.platform === 'darwin'
 
-/** "⌘" on macOS, "Ctrl" everywhere else. */
+/** "⌘" on macOS, "Ctrl" everywhere else. Rendered as its own key cap. */
 export const MOD_KEY = IS_MAC ? '⌘' : 'Ctrl'
-
-/** A full shortcut label, e.g. "⌘K" or "Ctrl K". */
-export function shortcut(key: string): string {
-  return IS_MAC ? `${MOD_KEY}${key}` : `${MOD_KEY} ${key}`
-}
