@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { ListFilter, Check, ShieldCheck, TriangleAlert, ArrowLeft } from 'lucide-react'
+import { Check, ShieldCheck, TriangleAlert, ArrowLeft } from 'lucide-react'
 import { motion } from 'motion/react'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -11,6 +10,7 @@ import { HostCompat } from '../components/HostCompat'
 import { ServerCard } from '../components/app/ServerCard'
 import { SPRING, staggerDelay } from '@/lib/motion'
 import { klikApi } from '../api/klikApi'
+import { FilterInput } from '../components/app/FilterInput'
 import { cn } from '@/lib/utils'
 import type { ClientId, ClientInfo, MergedServerEntry } from '../../../shared/types'
 
@@ -231,16 +231,11 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
               <ArrowLeft className="size-4" /> Featured
             </button>
 
-            <div className="relative">
-              <ListFilter className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Filter these servers…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                aria-label="Filter these servers"
-                className="h-10 pl-9"
-              />
-            </div>
+            <FilterInput
+              placeholder="Filter these servers…"
+              value={search}
+              onChange={setSearch}
+            />
 
             <div className="flex flex-wrap gap-1.5">
               {categories.map((c) => (

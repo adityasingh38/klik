@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { ListFilter, ShieldCheck, TriangleAlert, ExternalLink, Trash2, Info } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import { ShieldCheck, TriangleAlert, ExternalLink, Trash2, Info } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { BlurFade } from '@/components/ui/blur-fade'
@@ -21,6 +20,7 @@ import { ToolCompat } from '../components/ToolBadges'
 import { itemColor, itemWash, itemBloom } from '@/lib/itemColor'
 import { SPRING, staggerDelay } from '@/lib/motion'
 import { motion, useReducedMotion } from 'motion/react'
+import { FilterInput } from '../components/app/FilterInput'
 import { cn } from '@/lib/utils'
 
 /** How many cards mount at once before "Show more". */
@@ -177,16 +177,7 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
             <span>{notice}</span>
           </div>
         )}
-        <div className="relative">
-          <ListFilter className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={meta.filterPlaceholder}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label={meta.filterPlaceholder}
-            className="h-10 pl-9"
-          />
-        </div>
+        <FilterInput placeholder={meta.filterPlaceholder} value={search} onChange={setSearch} />
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             onClick={() => setCategory('All')}
