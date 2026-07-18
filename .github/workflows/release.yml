@@ -17,11 +17,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # `--publish never` matters: electron-builder sees the tag, assumes it
+          # should publish to GitHub itself, and fails demanding a GH_TOKEN. The
+          # release upload is this workflow's job, not the builder's.
           - os: windows-latest
-            build: npm run build:win
+            build: npm run build:win -- --publish never
             artifact: release/*.exe
           - os: macos-latest
-            build: npm run build:mac
+            build: npm run build:mac -- --publish never
             artifact: release/*.dmg
     runs-on: ${{ matrix.os }}
     steps:
