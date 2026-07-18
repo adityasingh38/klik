@@ -8,8 +8,12 @@ interface ThemeContextValue {
   /** What that resolves to right now. */
   resolved: 'light' | 'dark'
   sound: boolean
+  onboarded: boolean
+  /** Null until preferences have loaded, so first run never flashes on relaunch. */
+  prefsLoaded: boolean
   setTheme: (next: ThemePreference, origin?: { x: number; y: number }) => void
   setSound: (next: boolean) => void
+  setOnboarded: (next: boolean) => void
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
@@ -36,6 +40,7 @@ function apply(preference: ThemePreference): void {
 export function ThemeProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFERENCES)
   const [resolved, setResolved] = useState<'light' | 'dark'>(() => systemTheme())
+  const [prefsLoaded, setPrefsLoaded] = useState(false)
 
   // Preferences live in the main process, so the first paint uses the default and is
   // corrected as soon as they load. Reading them is a single file read — fast enough
@@ -51,6 +56,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
         setResolved(resolve(loaded.theme))
       })
       .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setPrefsLoaded(true)
+      })
     return () => {
       cancelled = true
     }
@@ -118,9 +126,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
     void klikApi.setPrefs({ sound: next }).catch(() => {})
   }, [])
 
+  const setOnboarded = useCallback((next: boolean): void => {
+    setPrefs((p) => ({ ...p, onboarded: next }))
+    void klikApi.setPrefs({ onboarded: next }).catch(() => {})
+  }, [])
+
   return (
     <ThemeContext.Provider
-      value={{ preference: prefs.theme, resolved, sound: prefs.sound, setTheme, setSound }}
+      value={{
+        preference: prefs.theme,
+        resolved,
+        sound: prefs.sound,
+        onboarded: prefs.onboarded,
+        prefsLoaded,
+        setTheme,
+        setSound,
+        setOnboarded
+      }}
     >
       {children}
     </ThemeContext.Provider>

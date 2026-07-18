@@ -1,25 +1,35 @@
-// Drives the real Electron app: screenshots each theme and each section so the
-// shell can actually be looked at, not just measured. The browser preview harness
-// reported impossible values for this app, so this is the source of truth.
-// Build first (`npm run build`), then: node drive-klik.cjs [outDir]
+// Drives the real Electron app: screenshots each theme and each section so the shell
+// can be looked at, not just measured. The browser preview harness reported impossible
+// values for this app, so this is the source of truth.
+//
+// Runs against a throwaway --user-data-dir, so it never touches the real Klik profile
+// (preferences, install records, caches). Build first (`npm run build`), then:
+//   node drive-klik.cjs
 const { _electron } = require('playwright-core')
 const path = require('node:path')
 const fs = require('node:fs')
+const os = require('node:os')
 
 const electronPath = require('electron')
-const OUT = process.argv[2] || path.join(process.cwd(), '.shots')
+const OUT = path.join(process.cwd(), '.shots')
+
+/** A clean profile per run, seeded so we land in the app rather than in first run. */
+function scratchProfile(seed) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'klik-drive-'))
+  if (seed) {
+    fs.writeFileSync(path.join(dir, 'preferences.json'), JSON.stringify(seed, null, 2))
+  }
+  return dir
+}
 
 async function shoot(win, name) {
   fs.mkdirSync(OUT, { recursive: true })
-  const file = path.join(OUT, `${name}.png`)
-  await win.screenshot({ path: file })
-  console.log('SHOT', name, '->', file)
+  await win.screenshot({ path: path.join(OUT, `${name}.png`) })
+  console.log('SHOT', name)
 }
 
 async function setTheme(win, theme) {
-  await win.evaluate((t) => {
-    document.documentElement.setAttribute('data-theme', t)
-  }, theme)
+  await win.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
   await win.waitForTimeout(400)
 }
 
@@ -37,28 +47,31 @@ async function goto(win, label) {
 }
 
 ;(async () => {
-  const app = await _electron.launch({ executablePath: electronPath, args: ['.'] })
-  const win = await app.firstWindow()
-  await win.setViewportSize({ width: 1280, height: 860 }).catch(() => {})
-  await win.waitForSelector('header', { timeout: 20000 })
-  await win.waitForTimeout(2200)
+  const userDataDir = scratchProfile({ theme: 'system', sound: true, onboarded: true })
+  console.log('profile:', userDataDir)
 
-  const errors = await win.evaluate(() => {
-    const out = []
-    document.querySelectorAll('*').forEach(() => {})
-    return out
+  const app = await _electron.launch({
+    executablePath: electronPath,
+    args: ['.', `--user-data-dir=${userDataDir}`]
   })
+  const win = await app.firstWindow()
+  await win.waitForSelector('header', { timeout: 20000 })
+  // A cold profile has no catalogue cache, so give the live fetch a moment.
+  await win.waitForTimeout(4000)
 
   for (const theme of ['light', 'dark']) {
     await setTheme(win, theme)
     await shoot(win, `${theme}-mcp`)
     if (await goto(win, 'Skills')) await shoot(win, `${theme}-skills`)
+    if (await goto(win, 'Plugins')) await shoot(win, `${theme}-plugins`)
     if (await goto(win, 'Tools')) await shoot(win, `${theme}-tools`)
+    if (await goto(win, 'Settings')) await shoot(win, `${theme}-settings`)
     await goto(win, 'MCP Servers')
   }
 
-  console.log('ERRORS:', JSON.stringify(errors))
   await app.close()
+  fs.rmSync(userDataDir, { recursive: true, force: true })
+  console.log('profile cleaned up')
 })().catch((e) => {
   console.error('FAILED:', e.message)
   process.exit(1)

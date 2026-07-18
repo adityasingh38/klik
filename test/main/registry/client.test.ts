@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { loadRegistry, normalizeRawServer, cachePath } from '../../../src/main/registry/client'
+import { loadRegistry, loadRegistryComplete, normalizeRawServer, cachePath } from '../../../src/main/registry/client'
 
 function page(servers: unknown[], nextCursor?: string) {
   return {
@@ -115,7 +115,7 @@ describe('loadRegistry', () => {
     vi.unstubAllGlobals()
   })
 
-  it('fetches, paginates, filters to latest versions, and caches the result', async () => {
+  it('paginates fully, filters to latest versions, and caches the result', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -149,7 +149,7 @@ describe('loadRegistry', () => {
       )
     vi.stubGlobal('fetch', fetchMock)
 
-    const result = await loadRegistry(tmpDir)
+    const result = await loadRegistryComplete(tmpDir)
 
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(result.fromCache).toBe(false)
@@ -157,6 +157,63 @@ describe('loadRegistry', () => {
     expect(result.entries[0].version).toBe('1.1.0')
     expect(existsSync(cachePath(tmpDir))).toBe(true)
   })
+
+  it('returns the first page without waiting for the rest', async () => {
+    // The cold-start path: a brand new user has no cache, so awaiting every page
+    // before rendering left them looking at skeletons.
+    let resolveSecondPage: (value: unknown) => void = () => {}
+    const secondPage = new Promise((resolve) => {
+      resolveSecondPage = resolve
+    })
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        page(
+          [
+            {
+              server: {
+                name: 'ai.example/first',
+                description: 'd',
+                version: '1.0.0',
+                packages: [{ registryType: 'npm', identifier: 'first', version: '1.0.0', transport: { type: 'stdio' } }]
+              },
+              _meta: { 'io.modelcontextprotocol.registry/official': { isLatest: true } }
+            }
+          ],
+          'cursor-1'
+        )
+      )
+      .mockImplementationOnce(() => secondPage)
+    vi.stubGlobal('fetch', fetchMock)
+
+    // Resolves even though page two is still outstanding.
+    const result = await loadRegistry(tmpDir)
+
+    expect(result.entries).toHaveLength(1)
+    expect(result.entries[0].id).toBe('ai.example/first')
+    expect(result.fromCache).toBe(false)
+
+    resolveSecondPage(page([]))
+  })
+
+  it('gives up on a page that never responds rather than hanging forever', async () => {
+    // A request with no timeout leaves a first-time user on skeletons indefinitely,
+    // because there is no cache to fall back to.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(
+        (_url: string, init?: { signal?: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(new Error('aborted')))
+          })
+      )
+    )
+
+    const result = await loadRegistry(tmpDir)
+
+    expect(result.entries).toEqual([])
+  }, 15000)
 
   it('falls back to the cache when the fetch fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) }))
@@ -223,7 +280,7 @@ describe('loadRegistry', () => {
     mkdirSync(tmpDir, { recursive: true })
     writeFileSync(cachePath(tmpDir), JSON.stringify(cached))
 
-    const result = await loadRegistry(tmpDir)
+    const result = await loadRegistryComplete(tmpDir)
 
     // Must terminate (bounded by MAX_PAGES) and fall back to cache, same as any other fetch failure.
     expect(result.fromCache).toBe(true)

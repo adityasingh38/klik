@@ -1,9 +1,19 @@
 import React from 'react'
-import { RefreshCw, ExternalLink, Palette, Database } from 'lucide-react'
+import { RefreshCw, ExternalLink, Palette, Database, Volume2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { KlikLogo } from '../components/KlikLogo'
+import { useTheme } from '@/lib/theme'
+import { playKlik } from '@/lib/sound'
+import { cn } from '@/lib/utils'
+import type { ThemePreference } from '../../../shared/prefs'
+
+const THEME_OPTIONS: Array<{ value: ThemePreference; label: string }> = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' }
+]
 
 interface SettingsViewProps {
   serverCount: number
@@ -39,6 +49,7 @@ function Row({
 
 export function SettingsView(props: SettingsViewProps): React.JSX.Element {
   const { serverCount, fromCache, isRefreshing, onRefresh } = props
+  const { preference, setTheme, sound, setSound } = useTheme()
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -50,7 +61,7 @@ export function SettingsView(props: SettingsViewProps): React.JSX.Element {
             <Badge variant="outline">v{__APP_VERSION__}</Badge>
           </div>
           <span className="text-xs text-muted-foreground">
-            One-click installer for MCP servers into your desktop clients.
+            Install MCP servers, skills and plugins into the AI tools you already use.
           </span>
         </div>
       </div>
@@ -74,8 +85,65 @@ export function SettingsView(props: SettingsViewProps): React.JSX.Element {
         <Row
           icon={Palette}
           title="Appearance"
-          description="Klik ships a single, carefully tuned copper-on-graphite dark theme."
-          action={<Badge variant="outline">Dark</Badge>}
+          description="Follows your system by default."
+          action={
+            <div className="flex items-center gap-1 rounded-full border border-border bg-card p-0.5">
+              {THEME_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setTheme(option.value)}
+                  aria-pressed={preference === option.value}
+                  className={cn(
+                    'focus-ring rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                    preference === option.value
+                      ? 'bg-accent text-accent-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          }
+        />
+        <Separator />
+        <Row
+          icon={Volume2}
+          title="Install sound"
+          description="A short click when an install lands. Nothing else makes a sound."
+          action={
+            <div className="flex items-center gap-2">
+              {sound && (
+                <Button variant="ghost" size="sm" onClick={() => playKlik()}>
+                  Play
+                </Button>
+              )}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={sound}
+                aria-label="Install sound"
+                onClick={() => {
+                  const next = !sound
+                  setSound(next)
+                  // Hearing it the moment you enable it is the whole confirmation.
+                  if (next) playKlik()
+                }}
+                className={cn(
+                  'focus-ring relative h-6 w-10 rounded-full border transition-colors',
+                  sound ? 'border-primary bg-primary' : 'border-border bg-muted'
+                )}
+              >
+                <span
+                  className={cn(
+                    'absolute top-0.5 size-4 rounded-full bg-background transition-all',
+                    sound ? 'left-[1.125rem]' : 'left-0.5'
+                  )}
+                />
+              </button>
+            </div>
+          }
         />
         <Separator />
         <Row

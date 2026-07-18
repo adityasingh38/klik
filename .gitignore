@@ -6,3 +6,6 @@ release/
 .claude/
 .impeccable/
 .remember/
+
+# Screenshots from the verification drivers
+.shots/

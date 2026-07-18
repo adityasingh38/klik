@@ -26,8 +26,9 @@ import { InstallProgressView } from './components/InstallProgressView'
 import { SecretPromptDialog } from './components/SecretPromptDialog'
 import { klikApi } from './api/klikApi'
 import { MOD_KEY } from './lib/platform'
-import { ThemeProvider } from './lib/theme'
+import { ThemeProvider, useTheme } from './lib/theme'
 import { ThemeToggle } from './components/app/ThemeToggle'
+import { FirstRun } from './components/app/FirstRun'
 import type {
   ClientId,
   ClientInfo,
@@ -50,6 +51,15 @@ const SECTION_TITLES: Record<AppSection, { title: string; subtitle: string }> = 
 type InstallPhase = 'idle' | 'preview' | 'secrets' | 'progress'
 
 export default function App(): React.JSX.Element {
+  return (
+    <ThemeProvider>
+      <AppShell />
+    </ThemeProvider>
+  )
+}
+
+function AppShell(): React.JSX.Element {
+  const { onboarded, prefsLoaded, setOnboarded } = useTheme()
   const [servers, setServers] = useState<MergedServerEntry[]>([])
   const [isLoadingServers, setIsLoadingServers] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -284,8 +294,25 @@ export default function App(): React.JSX.Element {
 
   const meta = SECTION_TITLES[section]
 
+  // First run waits for preferences so it can't flash for someone who has already
+  // been through it.
+  if (prefsLoaded && !onboarded) {
+    return (
+      <TooltipProvider>
+        <FirstRun
+          tools={tools}
+          onFinish={(recommended) => {
+            setOnboarded(true)
+            if (recommended.length > 0) {
+              setSelectedServerIds(recommended)
+            }
+          }}
+        />
+      </TooltipProvider>
+    )
+  }
+
   return (
-    <ThemeProvider>
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar
@@ -472,6 +499,5 @@ export default function App(): React.JSX.Element {
         </Dialog>
       </SidebarProvider>
     </TooltipProvider>
-    </ThemeProvider>
   )
 }
