@@ -1,6 +1,6 @@
 {
   "name": "klikmcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Klik — one-click MCP server installer for Windows",
   "private": true,
   "license": "MIT",
