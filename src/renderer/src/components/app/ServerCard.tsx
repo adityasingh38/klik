@@ -46,14 +46,14 @@ export function ServerCard(props: ServerCardProps): React.JSX.Element {
     <motion.div
       whileHover={prefersReducedMotion ? undefined : { y: -3 }}
       transition={SPRING.snappy}
-      className="group relative flex"
+      className="group relative flex w-full"
     >
       <button
         type="button"
         onClick={() => onOpen(server)}
         aria-label={`${server.title} — ${server.description}`}
         className={cn(
-          'focus-ring surface-raised relative flex w-full flex-col gap-3 overflow-hidden rounded-2xl border p-5 text-left',
+          'focus-ring surface-raised relative flex h-full w-full flex-col gap-3 overflow-hidden rounded-2xl border p-5 text-left',
           'transition-[box-shadow,border-color] duration-200',
           'hover:surface-lifted',
           selected ? 'border-primary/60' : 'border-border'

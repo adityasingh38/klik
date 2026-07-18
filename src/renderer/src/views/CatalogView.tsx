@@ -18,6 +18,9 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { ToolCompat } from '../components/ToolBadges'
+import { itemColor, itemWash } from '@/lib/itemColor'
+import { SPRING, staggerDelay } from '@/lib/motion'
+import { motion, useReducedMotion } from 'motion/react'
 import { cn } from '@/lib/utils'
 
 /** A fully-normalized catalog item — everything the shared list and drawer need. */
@@ -104,6 +107,7 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
   const [category, setCategory] = useState('All')
   const [detail, setDetail] = useState<CatalogDetailItem | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const prefersReducedMotion = useReducedMotion()
 
   const categories = useMemo(() => {
     const counts = new Map<string, number>()
@@ -182,70 +186,102 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-10">
+      <div className="grid min-h-0 flex-1 auto-rows-min content-start gap-4 overflow-y-auto pb-10 sm:grid-cols-2 xl:grid-cols-3">
         {isLoading && items.length === 0
-          ? Array.from({ length: 4 }, (_, i) => (
+          ? Array.from({ length: 6 }, (_, i) => (
               <div
                 key={i}
-                className="surface-raised flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5"
+                className="surface-raised flex flex-col gap-3 rounded-2xl border border-border bg-card p-5"
               >
-                <Skeleton className="size-8 shrink-0 rounded-md" />
-                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                  <Skeleton className="h-3.5 w-32" />
-                  <Skeleton className="h-3 w-full max-w-md" />
+                <div className="flex gap-3.5">
+                  <Skeleton className="size-11 shrink-0 rounded-xl" />
+                  <div className="flex flex-1 flex-col gap-2">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
                 </div>
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-4/5" />
               </div>
             ))
           : filtered.map((item, index) => {
-              const row = (
-                <button
-                  onClick={() => openDetail(item)}
-                  className="focus-ring surface-raised flex w-full items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5 text-left transition-colors hover:bg-elevated"
+              const color = itemColor(item.id, item.title)
+              const isInstalled = installedIds.includes(item.id)
+              const card = (
+                <motion.div
+                  whileHover={prefersReducedMotion ? undefined : { y: -3 }}
+                  transition={SPRING.snappy}
+                  className="group flex w-full"
                 >
-                  <GlyphTile icon={Icon} />
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm font-medium text-foreground">{item.title}</span>
-                    <span className="truncate text-xs text-muted-foreground">{item.description}</span>
-                    <span className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {item.metaTags.map((t) => (
-                        <MetaTag key={t}>{t}</MetaTag>
-                      ))}
-                    </span>
-                    <ToolCompat
-                      toolIds={item.compatibleTools}
-                      detectedToolIds={detectedToolIds}
-                      variant="inline"
-                      className="mt-1.5"
+                  <button
+                    onClick={() => openDetail(item)}
+                    aria-label={`${item.title} — ${item.description}`}
+                    className="focus-ring surface-raised relative flex h-full w-full flex-col gap-3 overflow-hidden rounded-2xl border border-border p-5 text-left transition-[box-shadow,border-color] duration-200 hover:surface-lifted"
+                    style={{ background: itemWash(color, 7) }}
+                  >
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute -right-16 -top-20 size-48 rounded-full opacity-30 blur-3xl transition-opacity duration-300 group-hover:opacity-45"
+                      style={{ background: color }}
                     />
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    {installedIds.includes(item.id) && (
-                      <Badge className="bg-success text-success-foreground">Installed</Badge>
-                    )}
-                    {item.verified && (
-                      <Badge className="gap-1 bg-accent text-accent-foreground">
-                        <ShieldCheck className="size-3" /> Verified
-                      </Badge>
-                    )}
-                    {item.warnings.length > 0 && (
-                      <span title={item.warnings.join(' · ')}>
-                        <TriangleAlert className="size-4 text-destructive" />
+                    <span className="relative flex items-start gap-3.5">
+                      <span
+                        className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border/60"
+                        style={{ background: itemWash(color, 22), color }}
+                      >
+                        <Icon className="size-5" />
                       </span>
-                    )}
-                  </span>
-                </button>
+                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="flex items-center gap-1.5">
+                          <span className="truncate font-heading text-[1.05rem] font-semibold leading-tight text-foreground">
+                            {item.title}
+                          </span>
+                          {item.verified && <ShieldCheck className="size-3.5 shrink-0 text-primary" />}
+                        </span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {item.author ?? item.category}
+                        </span>
+                      </span>
+                      {isInstalled && (
+                        <span className="shrink-0 rounded-full bg-success px-2 py-0.5 text-[11px] font-medium text-success-foreground">
+                          Installed
+                        </span>
+                      )}
+                    </span>
+
+                    <p className="relative line-clamp-2 text-[0.875rem] leading-relaxed text-muted-foreground">
+                      {item.description}
+                    </p>
+
+                    <span className="relative mt-auto flex items-center gap-2 pt-1">
+                      <ToolCompat
+                        toolIds={item.compatibleTools}
+                        detectedToolIds={detectedToolIds}
+                        variant="inline"
+                        showLabel={false}
+                      />
+                      {item.warnings.length > 0 && (
+                        <TriangleAlert className="ml-auto size-4 shrink-0 text-destructive" />
+                      )}
+                    </span>
+                  </button>
+                </motion.div>
               )
-              return index < 12 ? (
-                <BlurFade key={item.id} direction="up" duration={0.2} delay={index * 0.02}>
-                  {row}
-                </BlurFade>
-              ) : (
-                <div key={item.id}>{row}</div>
+              return (
+                <motion.div
+                  key={item.id}
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ ...SPRING.standard, delay: staggerDelay(index) }}
+                  className="flex"
+                >
+                  {card}
+                </motion.div>
               )
             })}
 
         {!isLoading && filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
+          <div className="col-span-full flex flex-col items-center justify-center gap-2 py-16 text-center">
             <GlyphTile icon={Icon} size={40} />
             {items.length === 0 ? (
               <>

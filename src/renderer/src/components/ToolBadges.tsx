@@ -111,6 +111,8 @@ interface ToolCompatProps {
   max?: number
   /** detail: an honest one-line note under the chips. */
   note?: React.ReactNode
+  /** inline: drop the "Works in" label where the marks alone carry it. */
+  showLabel?: boolean
   className?: string
 }
 
@@ -120,7 +122,7 @@ interface ToolCompatProps {
  * MCP). Detected tools sort first and render filled.
  */
 export function ToolCompat(props: ToolCompatProps): React.JSX.Element | null {
-  const { toolIds, detectedToolIds, variant, max = 4, note, className } = props
+  const { toolIds, detectedToolIds, variant, max = 4, note, showLabel = true, className } = props
 
   const detectedSet = new Set(detectedToolIds)
   const brands = toolIds
@@ -137,9 +139,11 @@ export function ToolCompat(props: ToolCompatProps): React.JSX.Element | null {
     const overflowLabel = ordered.slice(max).map((b) => b.short).join(', ')
     return (
       <span className={cn('inline-flex flex-wrap items-center gap-1', className)}>
-        <span className="mr-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          Works in
-        </span>
+        {showLabel && (
+          <span className="mr-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Works in
+          </span>
+        )}
         {shown.map((brand) => (
           <span key={brand.id} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
             <ToolMark brand={brand} detected={detectedSet.has(brand.id)} />

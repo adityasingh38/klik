@@ -59,14 +59,18 @@ async function goto(win, label) {
   // A cold profile has no catalogue cache, so give the live fetch a moment.
   await win.waitForTimeout(4000)
 
+  // The theme is re-stamped immediately before each capture. ThemeProvider clears
+  // data-theme when the preference is `system`, so setting it once per pass gets
+  // silently undone and every shot comes out in the OS theme.
+  const sections = ['MCP Servers', 'Skills', 'Plugins', 'Tools', 'Settings']
+  const slug = { 'MCP Servers': 'mcp', Skills: 'skills', Plugins: 'plugins', Tools: 'tools', Settings: 'settings' }
+
   for (const theme of ['light', 'dark']) {
-    await setTheme(win, theme)
-    await shoot(win, `${theme}-mcp`)
-    if (await goto(win, 'Skills')) await shoot(win, `${theme}-skills`)
-    if (await goto(win, 'Plugins')) await shoot(win, `${theme}-plugins`)
-    if (await goto(win, 'Tools')) await shoot(win, `${theme}-tools`)
-    if (await goto(win, 'Settings')) await shoot(win, `${theme}-settings`)
-    await goto(win, 'MCP Servers')
+    for (const section of sections) {
+      if (!(await goto(win, section))) continue
+      await setTheme(win, theme)
+      await shoot(win, `${theme}-${slug[section]}`)
+    }
   }
 
   await app.close()
