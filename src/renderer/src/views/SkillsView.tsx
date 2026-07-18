@@ -19,13 +19,18 @@ const SKILL_META: CatalogKindMeta = {
 
 interface SkillsViewProps {
   detectedToolIds: string[]
+  /** The live catalogue, owned by App so the sidebar count matches. */
+  catalog: SkillEntry[]
   focusItemId?: string | null
   onFocusHandled?: () => void
   tools: DetectedTool[]
 }
 
-export function SkillsView({ detectedToolIds, tools, focusItemId, onFocusHandled }: SkillsViewProps): React.JSX.Element {
+export function SkillsView({ detectedToolIds, tools, catalog, focusItemId, onFocusHandled }: SkillsViewProps): React.JSX.Element {
   const [installedIds, setInstalledIds] = useState<string[]>([])
+  // Ships with a bundled copy and swaps to the live catalogue once it resolves, so
+  // new skills appear without a Klik release and the list is never empty offline.
+
   const [pending, setPending] = useState<SkillEntry | null>(null)
 
   const refreshInstalled = useCallback((): void => {
@@ -42,12 +47,12 @@ export function SkillsView({ detectedToolIds, tools, focusItemId, onFocusHandled
 
   const items = useMemo<CatalogDetailItem[]>(
     () =>
-      SKILLS_CATALOG.map((s) => ({
+      catalog.map((s) => ({
         id: s.id,
         title: s.title,
         description: s.description,
         category: s.category,
-        metaTags: [s.category, ...(s.author ? [s.author] : [])],
+        metaTags: [s.author ?? 'Community', ...(s.tier === 'official' ? ['Official'] : [])],
         compatibleTools: s.compatibleTools,
         verified: s.verified,
         warnings: s.warnings,
@@ -56,7 +61,7 @@ export function SkillsView({ detectedToolIds, tools, focusItemId, onFocusHandled
         sourceLabel: 'Source',
         repositoryUrl: s.repositoryUrl
       })),
-    []
+    [catalog]
   )
 
   /** Where a given skill would go: declared compatibility ∩ what's actually here. */
@@ -65,7 +70,7 @@ export function SkillsView({ detectedToolIds, tools, focusItemId, onFocusHandled
   }
 
   function handleAction(item: CatalogDetailItem): void {
-    const skill = SKILLS_CATALOG.find((s) => s.id === item.id)
+    const skill = catalog.find((s) => s.id === item.id)
     if (skill && targetsFor(skill).length > 0) setPending(skill)
   }
 

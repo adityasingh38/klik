@@ -15,6 +15,7 @@ import type {
   PluginInstallRequest,
   PluginInstallStepResult,
   PluginPreflightRequest,
+  SkillEntry,
   SkillInstallPreview,
   SkillInstallRequest,
   SkillInstallStepResult,
@@ -44,6 +45,7 @@ const klikApi = {
   uninstall: (serverId: string): Promise<void> => ipcRenderer.invoke('klik:uninstall', serverId),
 
   getTools: (): Promise<DetectedTool[]> => ipcRenderer.invoke('klik:getTools'),
+  getSkills: (bundled: SkillEntry[]): Promise<SkillEntry[]> => ipcRenderer.invoke('klik:getSkills', bundled),
   getInstalledSkills: (): Promise<InstalledSkillRecord[]> => ipcRenderer.invoke('klik:getInstalledSkills'),
   skillPreflight: (request: SkillPreflightRequest): Promise<SkillInstallPreview> =>
     ipcRenderer.invoke('klik:skillPreflight', request),

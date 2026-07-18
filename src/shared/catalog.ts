@@ -7,6 +7,9 @@
  */
 export type InstallableKind = 'mcp' | 'skill' | 'plugin'
 
+/** How far a skill's source has been vetted. Drives the badge on each card. */
+export type SkillTier = 'official' | 'verified' | 'community'
+
 /** A packaged instruction/capability file installed into a tool's skills directory. */
 export interface SkillEntry {
   id: string
@@ -25,6 +28,8 @@ export interface SkillEntry {
   category: string
   /** Tool ids (see TOOL_BRANDS) this skill can be installed into. */
   compatibleTools: string[]
+  /** Where it came from: Anthropic's own repo, a vetted source, or the community. */
+  tier?: SkillTier
   verified: boolean
   warnings: string[]
 }

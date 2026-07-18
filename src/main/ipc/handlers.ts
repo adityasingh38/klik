@@ -13,6 +13,7 @@ import { buildInstallPreview } from '../install/preflight'
 import { buildSkillInstallPreview } from '../skills/preflight'
 import { installSkill, uninstallSkill } from '../skills/installer'
 import { listInstalledSkills } from '../skills/state'
+import { loadSkillCatalog } from '../skills/catalog'
 import {
   buildPluginInstallPreview,
   installPluginEntry,
@@ -22,6 +23,7 @@ import { listInstalledPlugins } from '../plugins/cli'
 import { readPreferences, writePreferences } from '../prefs/store'
 import type { ClientId, GetServersResult, InstallRequest, PreflightRequest } from '../../shared/types'
 import type { Preferences } from '../../shared/prefs'
+import type { SkillEntry } from '../../shared/catalog'
 import type {
   PluginInstallRequest,
   PluginPreflightRequest,
@@ -89,6 +91,10 @@ export function registerIpcHandlers(): void {
   // --- Skills -------------------------------------------------------------
 
   ipcMain.handle('klik:getTools', () => detectTools())
+
+  ipcMain.handle('klik:getSkills', (_event, bundled: SkillEntry[]) =>
+    loadSkillCatalog(app.getPath('userData'), bundled)
+  )
 
   ipcMain.handle('klik:getInstalledSkills', () => listInstalledSkills(app.getPath('userData')))
 

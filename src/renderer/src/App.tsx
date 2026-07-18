@@ -36,7 +36,7 @@ import type {
   InstallStepResult,
   MergedServerEntry
 } from '../../shared/types'
-import type { DetectedTool } from '../../shared/catalog'
+import type { DetectedTool, SkillEntry } from '../../shared/catalog'
 
 const SECTION_TITLES: Record<AppSection, { title: string; subtitle: string }> = {
   mcp: { title: 'MCP Servers', subtitle: 'Browse and install MCP servers' },
@@ -65,6 +65,8 @@ export default function App(): React.JSX.Element {
   // still owns its own copy for its list.
   const [installedSkillIds, setInstalledSkillIds] = useState<string[]>([])
   const [installedPluginIds, setInstalledPluginIds] = useState<string[]>([])
+  /** The live skill catalogue. Starts as the bundled copy, swaps when the fetch lands. */
+  const [skills, setSkills] = useState<SkillEntry[]>(SKILLS_CATALOG)
   const detectedToolIds = useMemo(
     () => tools.filter((t) => t.installed).map((t) => t.id),
     [tools]
@@ -113,6 +115,12 @@ export default function App(): React.JSX.Element {
       setSelectedClientIds(fetched.filter((c) => c.installed).map((c) => c.id))
     })
     klikApi.getTools().then(setTools)
+    klikApi
+      .getSkills(SKILLS_CATALOG)
+      .then((live) => {
+        if (live.length > 0) setSkills(live)
+      })
+      .catch(() => {})
     klikApi.getInstalledSkills().then((r) => setInstalledSkillIds(r.map((x) => x.skillId)))
     klikApi.getInstalledPlugins().then((r) => setInstalledPluginIds(r.map((x) => x.id))).catch(() => {})
     refreshInstalled()
@@ -143,7 +151,7 @@ export default function App(): React.JSX.Element {
         installed: installedServerIds.includes(s.id),
         server: s
       })),
-      ...SKILLS_CATALOG.map((s) => ({
+      ...skills.map((s) => ({
         kind: 'skill' as const,
         id: s.id,
         title: s.title,
@@ -160,7 +168,7 @@ export default function App(): React.JSX.Element {
         installed: installedPluginIds.includes(p.id)
       }))
     ]
-  }, [servers, installedServerIds, installedSkillIds, installedPluginIds])
+  }, [servers, skills, installedServerIds, installedSkillIds, installedPluginIds])
 
   function handlePaletteSelect(item: PaletteItem): void {
     if (item.kind === 'mcp' && item.server) {
@@ -284,7 +292,7 @@ export default function App(): React.JSX.Element {
           active={section}
           onSelect={setSection}
           serverCount={servers.length}
-          skillCount={SKILLS_CATALOG.length}
+          skillCount={skills.length}
           pluginCount={PLUGINS_CATALOG.length}
           installedCount={installedRecords.length}
           toolCount={clients.filter((c) => c.installed).length}
@@ -363,6 +371,7 @@ export default function App(): React.JSX.Element {
                 <SkillsView
                   detectedToolIds={detectedToolIds}
                   tools={tools}
+                  catalog={skills}
                   focusItemId={focusItem?.kind === 'skill' ? focusItem.id : null}
                   onFocusHandled={() => setFocusItem(null)}
                 />
