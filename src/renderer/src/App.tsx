@@ -3,8 +3,8 @@ import { Search } from 'lucide-react'
 import { DotPattern } from '@/components/ui/dot-pattern'
 import { Confetti, type ConfettiRef } from '@/components/ui/confetti'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
-import { TooltipProvider } from '@/components/ui/tooltip'
-import { Kbd, KbdGroup } from '@/components/ui/kbd'
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import { Kbd } from '@/components/ui/kbd'
 import {
   Dialog,
   DialogContent,
@@ -309,7 +309,12 @@ export default function App(): React.JSX.Element {
 
           {/* Titlebar / header — draggable, leaves room for native window controls (right). */}
           <header className="app-drag relative z-20 flex h-10 shrink-0 items-center gap-3 border-b border-border/60 px-3 pr-36">
-            <SidebarTrigger className="no-drag" />
+            <Tooltip>
+              <TooltipTrigger render={<SidebarTrigger className="no-drag" />} />
+              <TooltipContent>
+                Collapse sidebar · <Kbd>{MOD_KEY}</Kbd> <Kbd>B</Kbd>
+              </TooltipContent>
+            </Tooltip>
             {/* The title is short and always fits; the subtitle is what gives way. */}
             <div className="flex min-w-0 items-baseline gap-2">
               <span className="shrink-0 whitespace-nowrap font-heading text-sm font-semibold text-foreground">
@@ -325,17 +330,25 @@ export default function App(): React.JSX.Element {
                 cached
               </span>
             )}
-            <button
-              onClick={() => setPaletteOpen(true)}
-              className="no-drag ml-auto flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
-            >
-              <Search className="size-3.5" />
-              <span className="hidden sm:inline">Search</span>
-              <KbdGroup className="ml-1">
-                <Kbd>{MOD_KEY}</Kbd>
-                <Kbd>K</Kbd>
-              </KbdGroup>
-            </button>
+            {/* Deliberately an icon button, not a bordered pill: a search-shaped box
+                sitting directly above each catalog's filter box read as two search
+                fields doing the same thing. */}
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    onClick={() => setPaletteOpen(true)}
+                    aria-label="Search everything"
+                    className="focus-ring no-drag ml-auto flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
+                  >
+                    <Search className="size-4" />
+                  </button>
+                }
+              />
+              <TooltipContent>
+                Search everything · <Kbd>{MOD_KEY}</Kbd> <Kbd>K</Kbd>
+              </TooltipContent>
+            </Tooltip>
           </header>
 
           {/* Content */}
