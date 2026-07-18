@@ -14,7 +14,7 @@ import { AppSidebar, type AppSection } from './components/app/AppSidebar'
 import { ServerDetailDrawer } from './components/app/ServerDetailDrawer'
 import { CommandPalette, type PaletteItem } from './components/app/CommandPalette'
 import { InstallPreviewDialog } from './components/app/InstallPreviewDialog'
-import { DiscoverView } from './views/DiscoverView'
+import { DiscoverView, FEATURED_IDS } from './views/DiscoverView'
 import { SkillsView } from './views/SkillsView'
 import { PluginsView } from './views/PluginsView'
 import { InstalledView } from './views/InstalledView'
@@ -72,6 +72,7 @@ function AppShell(): React.JSX.Element {
   const [isLoadingServers, setIsLoadingServers] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [fromCache, setFromCache] = useState(false)
+  const [catalogueTotal, setCatalogueTotal] = useState(0)
   const [clients, setClients] = useState<ClientInfo[]>([])
   const [installedRecords, setInstalledRecords] = useState<InstalledServerRecord[]>([])
   const [selectedServerIds, setSelectedServerIds] = useState<string[]>([])
@@ -112,13 +113,19 @@ function AppShell(): React.JSX.Element {
     klikApi.getInstalled().then(setInstalledRecords)
   }, [])
 
+  /**
+   * Only the wall's nine and the totals cross the process boundary on launch. The
+   * full catalogue — ~15,700 entries, 9.5 MB on disk — stays in the main process and
+   * is queried a page at a time.
+   */
   const loadServers = useCallback((refresh = false): void => {
     if (refresh) setIsRefreshing(true)
     klikApi
-      .getServers()
-      .then(({ servers: fetched, fromCache: cached }) => {
-        setServers(fetched)
-        setFromCache(cached)
+      .getFeatured(FEATURED_IDS)
+      .then((page) => {
+        setServers(page.servers)
+        setCatalogueTotal(page.catalogueTotal)
+        setFromCache(true)
       })
       .finally(() => {
         setIsLoadingServers(false)
@@ -326,7 +333,7 @@ function AppShell(): React.JSX.Element {
         <AppSidebar
           active={section}
           onSelect={setSection}
-          serverCount={servers.length}
+          serverCount={catalogueTotal}
           skillCount={skills.length}
           pluginCount={PLUGINS_CATALOG.length}
           installedCount={installedRecords.length + installedSkills.length + installedPlugins.length}
@@ -387,6 +394,7 @@ function AppShell(): React.JSX.Element {
               <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-8 pt-6">
                 <DiscoverView
                   servers={servers}
+                  catalogueTotal={catalogueTotal}
                   isLoadingServers={isLoadingServers}
                   installedServerIds={installedServerIds}
                   selectedServerIds={selectedServerIds}
@@ -464,7 +472,7 @@ function AppShell(): React.JSX.Element {
                   )}
                   {section === 'settings' && (
                     <SettingsView
-                      serverCount={servers.length}
+                      serverCount={catalogueTotal}
                       fromCache={fromCache}
                       isRefreshing={isRefreshing}
                       onRefresh={() => loadServers(true)}

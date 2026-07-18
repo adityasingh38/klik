@@ -5,7 +5,7 @@ import { ServerLogo } from '../ServerLogo'
 import { ToolMark } from '../ToolBadges'
 import { hostsForTransport } from '../../../../shared/hosts'
 import { toolBrand } from '../../../../shared/tools'
-import { itemColor, itemWash } from '@/lib/itemColor'
+import { itemColor, itemBloom } from '@/lib/itemColor'
 import { SPRING } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 import type { MergedServerEntry } from '../../../../shared/types'
@@ -58,15 +58,8 @@ export function ServerCard(props: ServerCardProps): React.JSX.Element {
           'hover:surface-lifted',
           selected ? 'border-primary/60' : 'border-border'
         )}
-        style={{ background: itemWash(color, selected ? 12 : 7) }}
+        style={{ background: itemBloom(color, selected ? 12 : 7, selected ? 34 : 24) }}
       >
-        {/* A soft bloom of the publisher's colour, so the card has a light source. */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -right-16 -top-20 size-48 rounded-full opacity-30 blur-3xl transition-opacity duration-300 group-hover:opacity-45"
-          style={{ background: color }}
-        />
-
         <div className="relative flex items-start gap-3.5">
           <ServerLogo server={server} size={44} className="rounded-xl" />
           <span className="flex min-w-0 flex-1 flex-col gap-0.5">

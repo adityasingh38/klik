@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { ToolCompat } from '../components/ToolBadges'
-import { itemColor, itemWash } from '@/lib/itemColor'
+import { itemColor, itemWash, itemBloom } from '@/lib/itemColor'
 import { SPRING, staggerDelay } from '@/lib/motion'
 import { motion, useReducedMotion } from 'motion/react'
 import { cn } from '@/lib/utils'
@@ -263,13 +263,8 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
                     onClick={() => openDetail(item)}
                     aria-label={`${item.title} — ${item.description}`}
                     className="focus-ring surface-raised relative flex h-full w-full flex-col gap-3 overflow-hidden rounded-2xl border border-border p-5 text-left transition-[box-shadow,border-color] duration-200 hover:surface-lifted"
-                    style={{ background: itemWash(color, 7) }}
+                    style={{ background: itemBloom(color, 7) }}
                   >
-                    <span
-                      aria-hidden
-                      className="pointer-events-none absolute -right-16 -top-20 size-48 rounded-full opacity-30 blur-3xl transition-opacity duration-300 group-hover:opacity-45"
-                      style={{ background: color }}
-                    />
                     <span className="relative flex items-start gap-3.5">
                       <span
                         className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border/60"

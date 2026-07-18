@@ -1,12 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
   ClientInfo,
-  GetServersResult,
   InstallPreview,
   InstallRequest,
   InstallStepResult,
   InstalledServerRecord,
-  PreflightRequest
+  PreflightRequest,
+  ServerPage,
+  ServerQuery,
+  MergedServerEntry
 } from '../shared/types'
 import type {
   DetectedTool,
@@ -37,7 +39,11 @@ const klikApi = {
    */
   platform: process.platform as NodeJS.Platform,
 
-  getServers: (): Promise<GetServersResult> => ipcRenderer.invoke('klik:getServers'),
+  getFeatured: (ids: string[]): Promise<ServerPage> => ipcRenderer.invoke('klik:getFeatured', ids),
+  queryServers: (query: ServerQuery): Promise<ServerPage> => ipcRenderer.invoke('klik:queryServers', query),
+  serverCategories: (): Promise<Array<{ name: string; count: number }>> =>
+    ipcRenderer.invoke('klik:serverCategories'),
+  findServer: (id: string): Promise<MergedServerEntry | null> => ipcRenderer.invoke('klik:findServer', id),
   getClients: (): Promise<ClientInfo[]> => ipcRenderer.invoke('klik:getClients'),
   getInstalled: (): Promise<InstalledServerRecord[]> => ipcRenderer.invoke('klik:getInstalled'),
   preflight: (request: PreflightRequest): Promise<InstallPreview> => ipcRenderer.invoke('klik:preflight', request),

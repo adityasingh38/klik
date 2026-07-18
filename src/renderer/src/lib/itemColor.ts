@@ -63,3 +63,17 @@ export function itemColor(id: string, title = ''): string {
 export function itemWash(color: string, strength = 7): string {
   return `color-mix(in oklab, ${color} ${strength}%, var(--card))`
 }
+
+/**
+ * The card's light source: a bloom of the item's colour from the top-right corner.
+ *
+ * Painted as a gradient rather than a blurred element. A `blur()` layer is a separate
+ * GPU pass per card, and the catalogue renders dozens at a time — a gradient produces
+ * the same falloff for nothing.
+ */
+export function itemBloom(color: string, strength = 7, intensity = 24): string {
+  return [
+    `radial-gradient(115% 85% at 100% 0%, color-mix(in oklab, ${color} ${intensity}%, transparent) 0%, transparent 62%)`,
+    itemWash(color, strength)
+  ].join(', ')
+}

@@ -10,7 +10,7 @@ import { ServerLogo } from '../components/ServerLogo'
 import { HostCompat } from '../components/HostCompat'
 import { ServerCard } from '../components/app/ServerCard'
 import { SPRING, staggerDelay } from '@/lib/motion'
-import { rankServers } from '../../../shared/ranking'
+import { klikApi } from '../api/klikApi'
 import { cn } from '@/lib/utils'
 import type { ClientId, ClientInfo, MergedServerEntry } from '../../../shared/types'
 
@@ -24,6 +24,8 @@ interface DiscoverViewProps {
   selectedClientIds: ClientId[]
   onChangeSelectedClientIds: (ids: ClientId[]) => void
   isInstalling: boolean
+  /** Size of the whole catalogue, which lives in the main process. */
+  catalogueTotal: number
   onInstall: () => void
   onOpenServer: (server: MergedServerEntry) => void
 }
@@ -32,7 +34,7 @@ interface DiscoverViewProps {
 const PAGE_SIZE = 48
 
 /** Curated servers lead the catalogue; these are the ones worth arriving on. */
-const FEATURED_IDS = [
+export const FEATURED_IDS = [
   'com.notion/notion-mcp-server',
   'com.microsoft/playwright-mcp',
   'com.upstash/context7',
@@ -63,6 +65,7 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
     selectedClientIds,
     onChangeSelectedClientIds,
     isInstalling,
+    catalogueTotal,
     onInstall,
     onOpenServer
   } = props
@@ -75,47 +78,54 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
   const installedClients = clients.filter((c) => c.installed)
   const detectedClientIds = installedClients.map((c) => c.id)
 
-  const featured = useMemo(() => {
-    const byId = new Map(servers.map((s) => [s.id, s]))
-    const picked = FEATURED_IDS.map((id) => byId.get(id)).filter(
-      (s): s is MergedServerEntry => Boolean(s)
-    )
-    // If curation hasn't loaded, fall back to whatever is verified so the wall is
-    // never empty on a cold start.
-    if (picked.length >= 6) return picked
-    return [...picked, ...servers.filter((s) => s.curation?.verified && !picked.includes(s))].slice(0, 9)
-  }, [servers])
+  // The shell already resolved the wall; `servers` is those nine, not the catalogue.
+  const featured = servers
 
-  const categories = useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const s of servers) counts.set(s.category, (counts.get(s.category) ?? 0) + 1)
-    return ['All', ...[...counts.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c)]
-  }, [servers])
+  const [categories, setCategories] = useState<string[]>(['All'])
+  const [results, setResults] = useState<MergedServerEntry[]>([])
+  const [resultTotal, setResultTotal] = useState(0)
+  const [isQuerying, setIsQuerying] = useState(false)
+  const [limit, setLimit] = useState(PAGE_SIZE)
 
-  // Ranked once per catalogue change, not per keystroke — scoring 15,000 entries on
-  // every character typed is the difference between instant and janky.
-  const ranked = useMemo(() => rankServers(servers), [servers])
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    return ranked.filter((s) => {
-      if (verifiedOnly && !s.curation?.verified) return false
-      if (category !== 'All' && s.category !== category) return false
-      if (!q) return true
-      return (
-        s.title.toLowerCase().includes(q) ||
-        s.description.toLowerCase().includes(q) ||
-        s.id.toLowerCase().includes(q)
-      )
-    })
-  }, [ranked, search, verifiedOnly, category])
-
-  /** The registry is ~15,000 entries; only a window of them is ever mounted. */
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE)
+    if (!browsingAll) return
+    klikApi
+      .serverCategories()
+      .then((cats) => setCategories(['All', ...cats.map((c) => c.name)]))
+      .catch(() => {})
+  }, [browsingAll])
+
+  // Filtering runs in the main process, over the catalogue it already holds. The
+  // renderer never receives more than a page, so typing stays cheap no matter how
+  // large the registry gets.
+  useEffect(() => {
+    if (!browsingAll) return
+    let cancelled = false
+    setIsQuerying(true)
+    const timer = setTimeout(() => {
+      klikApi
+        .queryServers({ search, category, verifiedOnly, offset: 0, limit })
+        .then((page) => {
+          if (cancelled) return
+          setResults(page.servers)
+          setResultTotal(page.total)
+        })
+        .finally(() => {
+          if (!cancelled) setIsQuerying(false)
+        })
+    }, search ? 140 : 0)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [browsingAll, search, category, verifiedOnly, limit])
+
+  useEffect(() => {
+    setLimit(PAGE_SIZE)
   }, [search, category, verifiedOnly, browsingAll])
+
+  const visible = results
+  const filtered = results
 
   function toggleServer(id: string, checked: boolean): void {
     onChangeSelectedServerIds(
@@ -132,14 +142,15 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
   }
 
   const allVisibleSelected =
-    filtered.length > 0 && filtered.every((s) => selectedServerIds.includes(s.id))
+    visible.length > 0 && visible.every((s) => selectedServerIds.includes(s.id))
 
+  /** Acts on what's on screen — selecting 15,700 servers is never what anyone meant. */
   function toggleSelectAll(): void {
     if (allVisibleSelected) {
-      const visible = new Set(filtered.map((s) => s.id))
-      onChangeSelectedServerIds(selectedServerIds.filter((id) => !visible.has(id)))
+      const shown = new Set(visible.map((s) => s.id))
+      onChangeSelectedServerIds(selectedServerIds.filter((id) => !shown.has(id)))
     } else {
-      const merged = new Set([...selectedServerIds, ...filtered.map((s) => s.id)])
+      const merged = new Set([...selectedServerIds, ...visible.map((s) => s.id)])
       onChangeSelectedServerIds([...merged])
     }
   }
@@ -206,7 +217,7 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
               onClick={() => setBrowsingAll(true)}
               className="focus-ring surface-raised mx-auto flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-elevated"
             >
-              Browse all {servers.length || ''} servers
+              Browse all {catalogueTotal || ''} servers
             </button>
           </div>
         ) : (
@@ -258,7 +269,7 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
                   onClick={toggleSelectAll}
                   className="focus-ring rounded-sm text-xs font-medium text-accent-foreground hover:underline"
                 >
-                  {allVisibleSelected ? 'Clear selection' : `Select all ${filtered.length}`}
+                  {allVisibleSelected ? 'Clear selection' : `Select these ${visible.length}`}
                 </button>
               )}
             </div>
@@ -287,21 +298,21 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
                 <div className="col-span-full flex flex-col items-center justify-center gap-1 py-16 text-center">
                   <p className="text-sm font-medium text-foreground">No match for these filters</p>
                   <p className="text-xs text-muted-foreground">
-                    Try another category, or clear the filter to see all {servers.length}.
+                    Try another category, or clear the filter to see all {catalogueTotal}.
                   </p>
                 </div>
               )}
             </div>
 
-            {visible.length < filtered.length && (
+            {visible.length < resultTotal && (
               <button
                 type="button"
-                onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+                onClick={() => setLimit((n) => n + PAGE_SIZE)}
                 className="focus-ring surface-raised mx-auto flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-elevated"
               >
                 Show more
                 <span className="text-muted-foreground">
-                  {visible.length} of {filtered.length}
+                  {visible.length} of {resultTotal}
                 </span>
               </button>
             )}

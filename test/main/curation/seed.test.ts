@@ -22,32 +22,50 @@ const seedEntry: CuratedServerEntry = {
 }
 
 describe('loadSeedServers', () => {
-  let tmpDir: string
+  let resourcesDir: string
+  let userDataDir: string
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'klik-seed-'))
+    resourcesDir = mkdtempSync(join(tmpdir(), 'klik-seed-res-'))
+    userDataDir = mkdtempSync(join(tmpdir(), 'klik-seed-data-'))
+    // Never let a test hit the network; the refresh is fire-and-forget.
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
   })
 
   afterEach(() => {
-    rmSync(tmpDir, { recursive: true, force: true })
+    rmSync(resourcesDir, { recursive: true, force: true })
+    rmSync(userDataDir, { recursive: true, force: true })
     vi.unstubAllGlobals()
   })
 
-  it('returns the fetched catalog when the network call succeeds', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [seedEntry] }))
-    expect(await loadSeedServers(tmpDir)).toEqual([seedEntry])
+  it('returns the bundled catalog without waiting on the network', () => {
+    mkdirSync(join(resourcesDir, 'curation'), { recursive: true })
+    writeFileSync(bundledSeedPath(resourcesDir), JSON.stringify([seedEntry]))
+    // Synchronous by design: the first screen must not wait for a fetch.
+    expect(loadSeedServers(resourcesDir, userDataDir)).toEqual([seedEntry])
   })
 
-  it('falls back to the bundled catalog when the fetch fails', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
-    mkdirSync(join(tmpDir, 'curation'), { recursive: true })
-    writeFileSync(bundledSeedPath(tmpDir), JSON.stringify([seedEntry]))
-    expect(await loadSeedServers(tmpDir)).toEqual([seedEntry])
+  it('prefers a previously refreshed copy over the bundled one', () => {
+    mkdirSync(join(resourcesDir, 'curation'), { recursive: true })
+    writeFileSync(bundledSeedPath(resourcesDir), JSON.stringify([seedEntry]))
+    const fresher = [{ ...seedEntry, title: 'Memory (updated)' }]
+    mkdirSync(join(userDataDir, 'feeds'), { recursive: true })
+    writeFileSync(join(userDataDir, 'feeds', 'servers.json'), JSON.stringify(fresher))
+
+    expect(loadSeedServers(resourcesDir, userDataDir)[0].title).toBe('Memory (updated)')
   })
 
-  it('returns an empty array when neither source is available', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
-    expect(await loadSeedServers(tmpDir)).toEqual([])
+  it('falls back to the bundled copy when the refreshed one is corrupt', () => {
+    mkdirSync(join(resourcesDir, 'curation'), { recursive: true })
+    writeFileSync(bundledSeedPath(resourcesDir), JSON.stringify([seedEntry]))
+    mkdirSync(join(userDataDir, 'feeds'), { recursive: true })
+    writeFileSync(join(userDataDir, 'feeds', 'servers.json'), '{ not json')
+
+    expect(loadSeedServers(resourcesDir, userDataDir)).toEqual([seedEntry])
+  })
+
+  it('returns an empty array when neither source is available', () => {
+    expect(loadSeedServers(resourcesDir, userDataDir)).toEqual([])
   })
 })
 

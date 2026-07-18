@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { ServerLogo } from '../ServerLogo'
 import { HostCompat } from '../HostCompat'
-import { itemColor, itemWash } from '@/lib/itemColor'
+import { itemColor, itemBloom } from '@/lib/itemColor'
 import type { ClientId, MergedServerEntry } from '../../../../shared/types'
 
 interface ServerDetailDrawerProps {
@@ -51,12 +51,7 @@ export function ServerDetailDrawer(props: ServerDetailDrawerProps): React.JSX.El
       <DrawerPopup showCloseButton className="w-[26rem] max-w-[92vw]">
         {/* The tint sits behind the header rather than on it: clipping the bloom on the
             header itself also clipped the id line underneath the title. */}
-        <DrawerHeader className="relative isolate" style={{ background: itemWash(color, 9) }}>
-          <span
-            aria-hidden
-            className="pointer-events-none absolute -right-12 -top-24 -z-10 size-44 rounded-full opacity-35 blur-3xl"
-            style={{ background: color }}
-          />
+        <DrawerHeader className="relative" style={{ background: itemBloom(color, 9, 30) }}>
           <ServerLogo server={server} size={44} className="relative mb-1 rounded-xl" />
           <div className="relative flex flex-wrap items-center gap-2">
             <DrawerTitle>{server.title}</DrawerTitle>
