@@ -8,7 +8,7 @@ import type { DetectedTool, SkillEntry } from '../../../shared/catalog'
 
 const SKILL_META: CatalogKindMeta = {
   icon: Sparkles,
-  searchPlaceholder: 'Search skills…',
+  filterPlaceholder: 'Filter these skills…',
   compatNote:
     'A skill installs as an on-demand capability file. Compatibility depends on which tools load skill files — not the model behind each one.',
   actionLabel: 'Install skill',
@@ -19,10 +19,12 @@ const SKILL_META: CatalogKindMeta = {
 
 interface SkillsViewProps {
   detectedToolIds: string[]
+  focusItemId?: string | null
+  onFocusHandled?: () => void
   tools: DetectedTool[]
 }
 
-export function SkillsView({ detectedToolIds, tools }: SkillsViewProps): React.JSX.Element {
+export function SkillsView({ detectedToolIds, tools, focusItemId, onFocusHandled }: SkillsViewProps): React.JSX.Element {
   const [installedIds, setInstalledIds] = useState<string[]>([])
   const [pending, setPending] = useState<SkillEntry | null>(null)
 
@@ -82,6 +84,8 @@ export function SkillsView({ detectedToolIds, tools }: SkillsViewProps): React.J
         installedIds={installedIds}
         onAction={canInstallAny ? handleAction : undefined}
         onUninstall={handleUninstall}
+        focusItemId={focusItemId}
+        onFocusHandled={onFocusHandled}
         notice={
           canInstallAny ? undefined : (
             <>

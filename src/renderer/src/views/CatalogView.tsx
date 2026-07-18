@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react'
-import { Search, ShieldCheck, TriangleAlert, ExternalLink, Trash2, Info } from 'lucide-react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { ListFilter, ShieldCheck, TriangleAlert, ExternalLink, Trash2, Info } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -42,8 +42,8 @@ export interface CatalogDetailItem {
 export interface CatalogKindMeta {
   /** Glyph shown on each item's tile and in the empty state. */
   icon: React.ComponentType<{ className?: string }>
-  /** Placeholder for the search box. */
-  searchPlaceholder: string
+  /** Placeholder for the filter box — this narrows the visible list, it does not search globally. */
+  filterPlaceholder: string
   /** Honest one-liner shown under the compat chips in the drawer. */
   compatNote: React.ReactNode
   /** Verb for the primary action (Phase 3 wires it; disabled for now). */
@@ -66,6 +66,10 @@ interface CatalogViewProps {
   onUninstall?: (id: string) => void
   /** A blocking condition worth stating outright (e.g. a missing tool). */
   notice?: React.ReactNode
+  /** Id to open on arrival — set when the command palette jumps here. */
+  focusItemId?: string | null
+  /** Called once the jump has been handled, so it doesn't reopen on every render. */
+  onFocusHandled?: () => void
 }
 
 function MetaTag({ children }: { children: React.ReactNode }): React.JSX.Element {
@@ -95,7 +99,7 @@ function GlyphTile({
 }
 
 export function CatalogView(props: CatalogViewProps): React.JSX.Element {
-  const { items, isLoading = false, detectedToolIds, meta, installedIds = [], onAction, onUninstall, notice } = props
+  const { items, isLoading = false, detectedToolIds, meta, installedIds = [], onAction, onUninstall, notice, focusItemId, onFocusHandled } = props
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
   const [detail, setDetail] = useState<CatalogDetailItem | null>(null)
@@ -120,6 +124,17 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
     })
   }, [items, search, category])
 
+  // Arriving from the command palette opens that item straight away.
+  useEffect(() => {
+    if (!focusItemId) return
+    const target = items.find((it) => it.id === focusItemId)
+    if (target) {
+      setDetail(target)
+      setDetailOpen(true)
+    }
+    onFocusHandled?.()
+  }, [focusItemId, items, onFocusHandled])
+
   function openDetail(item: CatalogDetailItem): void {
     setDetail(item)
     setDetailOpen(true)
@@ -140,12 +155,12 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
           </div>
         )}
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <ListFilter className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder={meta.searchPlaceholder}
+            placeholder={meta.filterPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            aria-label={meta.searchPlaceholder}
+            aria-label={meta.filterPlaceholder}
             className="h-10 pl-9"
           />
         </div>

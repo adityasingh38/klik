@@ -8,7 +8,7 @@ import type { PluginEntry } from '../../../shared/catalog'
 
 const PLUGIN_META: CatalogKindMeta = {
   icon: Blocks,
-  searchPlaceholder: 'Search plugins…',
+  filterPlaceholder: 'Filter these plugins…',
   compatNote:
     'A plugin is added from a marketplace and bundles commands, agents, hooks, skills, and MCP servers. Klik installs it through Claude Code’s own CLI.',
   actionLabel: 'Add plugin',
@@ -19,9 +19,11 @@ const PLUGIN_META: CatalogKindMeta = {
 
 interface PluginsViewProps {
   detectedToolIds: string[]
+  focusItemId?: string | null
+  onFocusHandled?: () => void
 }
 
-export function PluginsView({ detectedToolIds }: PluginsViewProps): React.JSX.Element {
+export function PluginsView({ detectedToolIds, focusItemId, onFocusHandled }: PluginsViewProps): React.JSX.Element {
   const [installedIds, setInstalledIds] = useState<string[]>([])
   const [cliAvailable, setCliAvailable] = useState(true)
   const [pending, setPending] = useState<PluginEntry | null>(null)
@@ -75,6 +77,8 @@ export function PluginsView({ detectedToolIds }: PluginsViewProps): React.JSX.El
         installedIds={installedIds}
         onAction={cliAvailable ? handleAction : undefined}
         onUninstall={handleUninstall}
+        focusItemId={focusItemId}
+        onFocusHandled={onFocusHandled}
         notice={
           cliAvailable ? undefined : (
             <>

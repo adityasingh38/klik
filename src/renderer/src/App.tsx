@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { AppSidebar, type AppSection } from './components/app/AppSidebar'
 import { ServerDetailDrawer } from './components/app/ServerDetailDrawer'
-import { CommandPalette } from './components/app/CommandPalette'
+import { CommandPalette, type PaletteItem } from './components/app/CommandPalette'
 import { InstallPreviewDialog } from './components/app/InstallPreviewDialog'
 import { DiscoverView } from './views/DiscoverView'
 import { SkillsView } from './views/SkillsView'
@@ -61,6 +61,10 @@ export default function App(): React.JSX.Element {
 
   const [section, setSection] = useState<AppSection>('mcp')
   const [tools, setTools] = useState<DetectedTool[]>([])
+  // Mirrored here purely so the palette can badge results accurately; each catalog
+  // still owns its own copy for its list.
+  const [installedSkillIds, setInstalledSkillIds] = useState<string[]>([])
+  const [installedPluginIds, setInstalledPluginIds] = useState<string[]>([])
   const detectedToolIds = useMemo(
     () => tools.filter((t) => t.installed).map((t) => t.id),
     [tools]
@@ -68,6 +72,8 @@ export default function App(): React.JSX.Element {
   const [detailServer, setDetailServer] = useState<MergedServerEntry | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  /** Set when the palette jumps to a skill/plugin, so that catalog opens it. */
+  const [focusItem, setFocusItem] = useState<{ kind: 'skill' | 'plugin'; id: string } | null>(null)
 
   const [phase, setPhase] = useState<InstallPhase>('idle')
   const [results, setResults] = useState<InstallStepResult[]>([])
@@ -121,6 +127,8 @@ export default function App(): React.JSX.Element {
       setSelectedClientIds(fetched.filter((c) => c.installed).map((c) => c.id))
     })
     klikApi.getTools().then(setTools)
+    klikApi.getInstalledSkills().then((r) => setInstalledSkillIds(r.map((x) => x.skillId)))
+    klikApi.getInstalledPlugins().then((r) => setInstalledPluginIds(r.map((x) => x.id))).catch(() => {})
     refreshInstalled()
   }, [loadServers, refreshInstalled])
 
@@ -135,6 +143,47 @@ export default function App(): React.JSX.Element {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // The palette is the one surface that reaches across all three catalogs; the
+  // per-catalog boxes only filter what's already on screen.
+  const paletteItems = useMemo<PaletteItem[]>(() => {
+    return [
+      ...servers.map((s) => ({
+        kind: 'mcp' as const,
+        id: s.id,
+        title: s.title,
+        description: s.description,
+        category: s.category,
+        installed: installedServerIds.includes(s.id),
+        server: s
+      })),
+      ...SKILLS_CATALOG.map((s) => ({
+        kind: 'skill' as const,
+        id: s.id,
+        title: s.title,
+        description: s.description,
+        category: s.category,
+        installed: installedSkillIds.includes(s.id)
+      })),
+      ...PLUGINS_CATALOG.map((p) => ({
+        kind: 'plugin' as const,
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        category: p.category,
+        installed: installedPluginIds.includes(p.id)
+      }))
+    ]
+  }, [servers, installedServerIds, installedSkillIds, installedPluginIds])
+
+  function handlePaletteSelect(item: PaletteItem): void {
+    if (item.kind === 'mcp' && item.server) {
+      openServer(item.server)
+      return
+    }
+    setSection(item.kind === 'skill' ? 'skills' : 'plugins')
+    setFocusItem({ kind: item.kind === 'skill' ? 'skill' : 'plugin', id: item.id })
+  }
 
   function openServer(server: MergedServerEntry): void {
     setDetailServer(server)
@@ -311,13 +360,22 @@ export default function App(): React.JSX.Element {
 
             {section === 'skills' && (
               <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6 pt-5">
-                <SkillsView detectedToolIds={detectedToolIds} tools={tools} />
+                <SkillsView
+                  detectedToolIds={detectedToolIds}
+                  tools={tools}
+                  focusItemId={focusItem?.kind === 'skill' ? focusItem.id : null}
+                  onFocusHandled={() => setFocusItem(null)}
+                />
               </div>
             )}
 
             {section === 'plugins' && (
               <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6 pt-5">
-                <PluginsView detectedToolIds={detectedToolIds} />
+                <PluginsView
+                  detectedToolIds={detectedToolIds}
+                  focusItemId={focusItem?.kind === 'plugin' ? focusItem.id : null}
+                  onFocusHandled={() => setFocusItem(null)}
+                />
               </div>
             )}
 
@@ -373,9 +431,8 @@ export default function App(): React.JSX.Element {
         <CommandPalette
           open={paletteOpen}
           onOpenChange={setPaletteOpen}
-          servers={servers}
-          installedServerIds={installedServerIds}
-          onSelect={openServer}
+          items={paletteItems}
+          onSelect={handlePaletteSelect}
         />
 
         {phase === 'preview' && (

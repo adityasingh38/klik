@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Search, Check, ShieldCheck, TriangleAlert } from 'lucide-react'
+import { ListFilter, Check, ShieldCheck, TriangleAlert } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -106,12 +106,12 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
       {/* Controls */}
       <div className="flex flex-col gap-4 pb-4">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <ListFilter className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search MCP servers…"
+            placeholder="Filter these servers…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search MCP servers"
+            aria-label="Filter these servers"
             className="h-10 pl-9"
           />
         </div>
