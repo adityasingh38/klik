@@ -123,7 +123,7 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
               key={c}
               onClick={() => setCategory(c)}
               className={cn(
-                'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                'focus-ring rounded-full border px-3 py-1 text-xs font-medium transition-colors',
                 category === c
                   ? 'border-primary/50 bg-accent text-accent-foreground'
                   : 'border-border bg-card text-muted-foreground hover:bg-elevated hover:text-foreground'
@@ -142,7 +142,7 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
           {!isLoadingServers && filtered.length > 0 && (
             <button
               onClick={toggleSelectAll}
-              className="text-xs font-medium text-accent-foreground hover:underline"
+              className="focus-ring rounded-sm text-xs font-medium text-accent-foreground hover:underline"
             >
               {allVisibleSelected ? 'Clear selection' : `Select all ${filtered.length}`}
             </button>
@@ -172,13 +172,10 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
               const row = (
                 <div
                   className={cn(
-                    'surface-raised relative flex items-center gap-3 overflow-hidden rounded-md border px-3 py-2.5 transition-colors',
+                    'surface-raised flex items-center gap-3 overflow-hidden rounded-md border px-3 py-2.5 transition-colors',
                     isSelected ? 'border-primary/40 bg-elevated' : 'border-border bg-card hover:bg-elevated'
                   )}
                 >
-                  {isSelected && (
-                    <span aria-hidden className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary" />
-                  )}
                   <Checkbox
                     checked={isSelected}
                     onCheckedChange={(checked: boolean) => toggleServer(server.id, checked)}
@@ -186,7 +183,7 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
                   />
                   <button
                     onClick={() => onOpenServer(server)}
-                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    className="focus-ring flex min-w-0 flex-1 items-center gap-3 rounded-sm text-left"
                   >
                     <ServerLogo server={server} size={32} />
                     <span className="flex min-w-0 flex-1 flex-col">
@@ -254,7 +251,7 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
                     key={client.id}
                     onClick={() => toggleClient(client.id)}
                     className={cn(
-                      'flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                      'focus-ring flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
                       on
                         ? 'border-primary/50 bg-accent text-accent-foreground'
                         : 'border-border bg-card text-muted-foreground hover:bg-elevated'

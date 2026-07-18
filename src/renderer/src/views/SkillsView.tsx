@@ -12,7 +12,9 @@ const SKILL_META: CatalogKindMeta = {
   compatNote:
     'A skill installs as an on-demand capability file. Compatibility depends on which tools load skill files — not the model behind each one.',
   actionLabel: 'Install skill',
-  actionPendingReason: 'No detected tool can accept a skill install.'
+  actionPendingReason: 'No detected tool can accept a skill install.',
+  emptyHint:
+    'Skills are on-demand capabilities your AI tool loads when a task needs them — reading a PDF, building a deck, driving a browser.'
 }
 
 interface SkillsViewProps {
@@ -80,6 +82,14 @@ export function SkillsView({ detectedToolIds, tools }: SkillsViewProps): React.J
         installedIds={installedIds}
         onAction={canInstallAny ? handleAction : undefined}
         onUninstall={handleUninstall}
+        notice={
+          canInstallAny ? undefined : (
+            <>
+              No tool on this machine accepts skills yet, so these are read-only. Klik writes skills
+              into Claude Code&rsquo;s skills directory — install it and this catalog becomes live.
+            </>
+          )
+        }
       />
       {pending && (
         <SkillInstallDialog

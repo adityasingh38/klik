@@ -20,7 +20,7 @@ import { DiscoverView } from './views/DiscoverView'
 import { SkillsView } from './views/SkillsView'
 import { PluginsView } from './views/PluginsView'
 import { InstalledView } from './views/InstalledView'
-import { ClientsView } from './views/ClientsView'
+import { ToolsView } from './views/ToolsView'
 import { SettingsView } from './views/SettingsView'
 import { SKILLS_CATALOG } from './data/skillsCatalog'
 import { PLUGINS_CATALOG } from './data/pluginsCatalog'
@@ -326,8 +326,8 @@ export default function App(): React.JSX.Element {
                     />
                   )}
                   {section === 'tools' && (
-                    <ClientsView
-                      clients={clients}
+                    <ToolsView
+                      tools={tools}
                       selectedClientIds={selectedClientIds}
                       onToggleClient={(id) =>
                         setSelectedClientIds((prev) =>

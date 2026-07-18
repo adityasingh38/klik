@@ -12,7 +12,9 @@ const PLUGIN_META: CatalogKindMeta = {
   compatNote:
     'A plugin is added from a marketplace and bundles commands, agents, hooks, skills, and MCP servers. Klik installs it through Claude Code’s own CLI.',
   actionLabel: 'Add plugin',
-  actionPendingReason: 'The Claude Code CLI was not found on PATH.'
+  actionPendingReason: 'The Claude Code CLI was not found on PATH.',
+  emptyHint:
+    'Plugins bundle commands, agents, hooks, skills, and MCP servers, installed together from a marketplace.'
 }
 
 interface PluginsViewProps {
@@ -73,6 +75,14 @@ export function PluginsView({ detectedToolIds }: PluginsViewProps): React.JSX.El
         installedIds={installedIds}
         onAction={cliAvailable ? handleAction : undefined}
         onUninstall={handleUninstall}
+        notice={
+          cliAvailable ? undefined : (
+            <>
+              The Claude Code CLI wasn&rsquo;t found on your PATH, so plugins are read-only here.
+              Install Claude Code, then reopen this tab.
+            </>
+          )
+        }
       />
       {pending && (
         <PluginInstallDialog

@@ -1,9 +1,16 @@
 import React, { useMemo } from 'react'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { ToolDot, ToolChip } from './ToolBadges'
+import { ToolMark, ToolChip } from './ToolBadges'
 import { hostsForTransport, type McpHost } from '../../../shared/hosts'
+import { toolBrand } from '../../../shared/tools'
 import type { ClientId, TransportKind } from '../../../shared/types'
+
+/** MCP hosts carry only display fields; the shared registry has the logo source. */
+function brandOf(host: McpHost): { short: string; accent: string; websiteUrl?: string } {
+  const brand = toolBrand(host.id)
+  return { short: host.short, accent: host.accent, websiteUrl: brand?.websiteUrl }
+}
 
 interface HostCompatProps {
   transport: TransportKind
@@ -37,12 +44,12 @@ export function HostCompat(props: HostCompatProps): React.JSX.Element | null {
     const overflowLabel = ordered.slice(max).map((h) => h.short).join(', ')
     return (
       <span className={cn('inline-flex flex-wrap items-center gap-1', className)}>
-        <span className="mr-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80">
+        <span className="mr-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Works in
         </span>
         {shown.map((host) => (
           <span key={host.id} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-            <ToolDot accent={host.accent} detected={detected.includes(host)} />
+            <ToolMark brand={brandOf(host)} detected={detected.includes(host)} />
             {host.short}
           </span>
         ))}
@@ -50,7 +57,7 @@ export function HostCompat(props: HostCompatProps): React.JSX.Element | null {
           <Tooltip>
             <TooltipTrigger
               render={
-                <span className="cursor-default text-[11px] font-medium text-muted-foreground/80">
+                <span className="cursor-default text-[11px] font-medium text-muted-foreground">
                   +{overflow}
                 </span>
               }
@@ -74,7 +81,7 @@ export function HostCompat(props: HostCompatProps): React.JSX.Element | null {
           </span>
           <div className="flex flex-wrap gap-1.5">
             {detected.map((host) => (
-              <ToolChip key={host.id} brand={host} detected />
+              <ToolChip key={host.id} brand={brandOf(host)} detected />
             ))}
           </div>
         </div>
@@ -82,18 +89,18 @@ export function HostCompat(props: HostCompatProps): React.JSX.Element | null {
       {others.length > 0 && (
         <div className="flex flex-col gap-1.5">
           {detected.length > 0 && (
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80">
+            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               Also compatible
             </span>
           )}
           <div className="flex flex-wrap gap-1.5">
             {others.map((host) => (
-              <ToolChip key={host.id} brand={host} detected={false} />
+              <ToolChip key={host.id} brand={brandOf(host)} detected={false} />
             ))}
           </div>
         </div>
       )}
-      <p className="text-[11px] leading-relaxed text-muted-foreground/80">
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
         MCP is a shared protocol — compatibility is determined by the server&rsquo;s{' '}
         <span className="font-mono text-muted-foreground">{transport}</span> transport, not by the
         model behind each app.

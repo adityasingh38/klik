@@ -39,6 +39,9 @@
   --font-sans: var(--font-sans);
   --font-heading: var(--font-heading);
   --font-mono: var(--font-mono);
+  /* State changes decelerate. Applies to every `transition-*` utility. */
+  --default-transition-timing-function: var(--ease-out-quart);
+  --default-transition-duration: var(--duration-base);
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
@@ -111,6 +114,10 @@
   --font-sans: 'Inter', -apple-system, 'Segoe UI', sans-serif;
   --font-heading: 'Space Grotesk', -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  /* Exponential ease-out. State changes decelerate; nothing bounces. */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
 }
 
 body {
@@ -125,6 +132,29 @@ body {
   box-shadow:
     inset 0 1px 0 0 rgb(255 255 255 / 0.04),
     0 1px 2px 0 rgb(0 0 0 / 0.35);
+}
+
+/* Keyboard focus for the bare <button> elements the views build (chips, rows,
+   toggles). Tailwind's reset removes the UA outline, so without this a keyboard
+   user has no idea where they are. Never applied on mouse click — :focus-visible
+   only. */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
+/* Motion is a state signal here, never decoration — so removing it costs nothing.
+   Covers CSS animation/transition; JS-driven motion opts out via useReducedMotion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Custom titlebar drag region. Interactive children opt back out with .no-drag. */

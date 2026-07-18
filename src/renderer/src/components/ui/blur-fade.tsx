@@ -5,6 +5,7 @@ import {
   AnimatePresence,
   motion,
   useInView,
+  useReducedMotion,
   type MotionProps,
   type UseInViewOptions,
   type Variants,
@@ -47,6 +48,14 @@ export function BlurFade({
   const ref = useRef(null)
   const inViewResult = useInView(ref, { once: true, margin: inViewMargin })
   const isInView = !inView || inViewResult
+  const prefersReducedMotion = useReducedMotion()
+
+  // The entrance is a nicety, not information. Users who ask for less motion get
+  // the content immediately rather than a faster version of the same choreography.
+  if (prefersReducedMotion) {
+    return <div className={className}>{children}</div>
+  }
+
   const defaultVariants: Variants = {
     hidden: {
       [direction === "left" || direction === "right" ? "x" : "y"]:

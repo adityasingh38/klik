@@ -1,10 +1,10 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { toolBrand, type ToolBrand } from '../../../shared/tools'
+import { toolBrand, toolLogoUrl, type ToolBrand } from '../../../shared/tools'
 
-/** A brand dot — a small ring in the tool's accent, filled when the tool is detected. */
-export function ToolDot({ accent, detected }: { accent: string; detected: boolean }): React.JSX.Element {
+/** The accent dot — the fallback mark when a vendor logo can't be loaded. */
+function AccentDot({ accent, detected }: { accent: string; detected: boolean }): React.JSX.Element {
   return (
     <span
       aria-hidden
@@ -17,11 +17,59 @@ export function ToolDot({ accent, detected }: { accent: string; detected: boolea
   )
 }
 
+/**
+ * A tool's logo, taken from the vendor's own favicon, falling back to the accent
+ * dot when it can't load (offline, 404, blocked) so a chip is never broken-image.
+ * Undetected tools render desaturated and dimmed — presence is the signal, and
+ * colour carries it without needing a second label.
+ */
+export function ToolMark({
+  brand,
+  detected,
+  size = 14
+}: {
+  brand: { accent: string; websiteUrl?: string; name?: string }
+  detected: boolean
+  size?: number
+}): React.JSX.Element {
+  const [status, setStatus] = useState<'loading' | 'ok' | 'failed'>('loading')
+  const src = brand.websiteUrl ? toolLogoUrl(brand as ToolBrand) : null
+
+  // The dot renders underneath from the start and is only covered once the logo has
+  // actually decoded. A favicon that hangs (offline, slow host) never fires `error`,
+  // so waiting for a failure signal would leave a blank gap where the mark should be.
+  return (
+    <span
+      className="relative inline-flex shrink-0 items-center justify-center"
+      style={{ width: size, height: size }}
+    >
+      {status !== 'ok' && <AccentDot accent={brand.accent} detected={detected} />}
+      {src && status !== 'failed' && (
+        <img
+          src={src}
+          alt=""
+          aria-hidden
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setStatus('ok')}
+          onError={() => setStatus('failed')}
+          className={cn(
+            'absolute inset-0 size-full rounded-[3px] object-contain',
+            status !== 'ok' ? 'opacity-0' : !detected && 'opacity-60 saturate-50'
+          )}
+        />
+      )}
+    </span>
+  )
+}
+
+export { AccentDot as ToolDot }
+
 export function ToolChip({
   brand,
   detected
 }: {
-  brand: { short: string; accent: string }
+  brand: { short: string; accent: string; websiteUrl?: string }
   detected: boolean
 }): React.JSX.Element {
   return (
@@ -33,7 +81,7 @@ export function ToolChip({
           : 'border-border/60 bg-card/60 text-muted-foreground'
       )}
     >
-      <ToolDot accent={brand.accent} detected={detected} />
+      <ToolMark brand={brand} detected={detected} />
       {brand.short}
     </span>
   )
@@ -75,12 +123,12 @@ export function ToolCompat(props: ToolCompatProps): React.JSX.Element | null {
     const overflowLabel = ordered.slice(max).map((b) => b.short).join(', ')
     return (
       <span className={cn('inline-flex flex-wrap items-center gap-1', className)}>
-        <span className="mr-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80">
+        <span className="mr-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Works in
         </span>
         {shown.map((brand) => (
           <span key={brand.id} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-            <ToolDot accent={brand.accent} detected={detectedSet.has(brand.id)} />
+            <ToolMark brand={brand} detected={detectedSet.has(brand.id)} />
             {brand.short}
           </span>
         ))}
@@ -88,7 +136,7 @@ export function ToolCompat(props: ToolCompatProps): React.JSX.Element | null {
           <Tooltip>
             <TooltipTrigger
               render={
-                <span className="cursor-default text-[11px] font-medium text-muted-foreground/80">
+                <span className="cursor-default text-[11px] font-medium text-muted-foreground">
                   +{overflow}
                 </span>
               }
@@ -120,7 +168,7 @@ export function ToolCompat(props: ToolCompatProps): React.JSX.Element | null {
       {others.length > 0 && (
         <div className="flex flex-col gap-1.5">
           {detected.length > 0 && (
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80">
+            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               Also compatible
             </span>
           )}
@@ -131,7 +179,7 @@ export function ToolCompat(props: ToolCompatProps): React.JSX.Element | null {
           </div>
         </div>
       )}
-      {note && <p className="text-[11px] leading-relaxed text-muted-foreground/80">{note}</p>}
+      {note && <p className="text-[11px] leading-relaxed text-muted-foreground">{note}</p>}
     </div>
   )
 }

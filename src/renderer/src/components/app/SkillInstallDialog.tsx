@@ -159,7 +159,7 @@ export function SkillInstallDialog(props: SkillInstallDialogProps): React.JSX.El
                   {preview.files.map((f) => (
                     <div key={f.relativePath} className="flex items-baseline justify-between gap-2">
                       <span className="truncate font-mono text-[11px] text-muted-foreground">{f.relativePath}</span>
-                      <span className="shrink-0 font-mono text-[10px] text-muted-foreground/70">
+                      <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
                         {formatBytes(f.bytes)}
                       </span>
                     </div>

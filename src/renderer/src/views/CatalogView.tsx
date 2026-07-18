@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Search, ShieldCheck, TriangleAlert, ExternalLink, Trash2 } from 'lucide-react'
+import { Search, ShieldCheck, TriangleAlert, ExternalLink, Trash2, Info } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -50,6 +50,8 @@ export interface CatalogKindMeta {
   actionLabel: string
   /** Why the action is not yet available — shown in a tooltip. */
   actionPendingReason: string
+  /** Teaches what this catalog is, shown when nothing is installed/filtered in. */
+  emptyHint: string
 }
 
 interface CatalogViewProps {
@@ -62,6 +64,8 @@ interface CatalogViewProps {
   /** When provided the primary action is live; otherwise it renders disabled. */
   onAction?: (item: CatalogDetailItem) => void
   onUninstall?: (id: string) => void
+  /** A blocking condition worth stating outright (e.g. a missing tool). */
+  notice?: React.ReactNode
 }
 
 function MetaTag({ children }: { children: React.ReactNode }): React.JSX.Element {
@@ -91,7 +95,7 @@ function GlyphTile({
 }
 
 export function CatalogView(props: CatalogViewProps): React.JSX.Element {
-  const { items, isLoading = false, detectedToolIds, meta, installedIds = [], onAction, onUninstall } = props
+  const { items, isLoading = false, detectedToolIds, meta, installedIds = [], onAction, onUninstall, notice } = props
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
   const [detail, setDetail] = useState<CatalogDetailItem | null>(null)
@@ -126,6 +130,15 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-col gap-4 pb-4">
+        {notice && (
+          <div
+            role="status"
+            className="flex items-start gap-2 rounded-md border border-border bg-elevated px-3 py-2.5 text-xs text-muted-foreground"
+          >
+            <Info className="mt-0.5 size-3.5 shrink-0 text-primary" />
+            <span>{notice}</span>
+          </div>
+        )}
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -142,7 +155,7 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
               key={c}
               onClick={() => setCategory(c)}
               className={cn(
-                'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                'focus-ring rounded-full border px-3 py-1 text-xs font-medium transition-colors',
                 category === c
                   ? 'border-primary/50 bg-accent text-accent-foreground'
                   : 'border-border bg-card text-muted-foreground hover:bg-elevated hover:text-foreground'
@@ -172,7 +185,7 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
               const row = (
                 <button
                   onClick={() => openDetail(item)}
-                  className="surface-raised flex w-full items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5 text-left transition-colors hover:bg-elevated"
+                  className="focus-ring surface-raised flex w-full items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5 text-left transition-colors hover:bg-elevated"
                 >
                   <GlyphTile icon={Icon} />
                   <span className="flex min-w-0 flex-1 flex-col">
@@ -219,8 +232,19 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
         {!isLoading && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
             <GlyphTile icon={Icon} size={40} />
-            <p className="text-sm font-medium text-foreground">Nothing matches your filters</p>
-            <p className="text-xs text-muted-foreground">Try a different category or clear the search.</p>
+            {items.length === 0 ? (
+              <>
+                <p className="text-sm font-medium text-foreground">Nothing in this catalog yet</p>
+                <p className="max-w-sm text-xs text-muted-foreground">{meta.emptyHint}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-foreground">No match for these filters</p>
+                <p className="text-xs text-muted-foreground">
+                  Try another category, or clear the search to see all {items.length}.
+                </p>
+              </>
+            )}
           </div>
         )}
       </div>
