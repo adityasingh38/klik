@@ -109,11 +109,19 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
   const [detailOpen, setDetailOpen] = useState(false)
   const prefersReducedMotion = useReducedMotion()
 
+  // Multi-source catalogues throw off dozens of categories — one per plugin folder
+  // across every repository. Showing all of them buries the actual content under a
+  // wall of chips, so only the ones carrying real weight are offered up front.
   const categories = useMemo(() => {
     const counts = new Map<string, number>()
     for (const it of items) counts.set(it.category, (counts.get(it.category) ?? 0) + 1)
-    return ['All', ...[...counts.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c)]
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
   }, [items])
+
+  const [showAllCategories, setShowAllCategories] = useState(false)
+  const TOP_CATEGORIES = 7
+  const visibleCategories = showAllCategories ? categories : categories.slice(0, TOP_CATEGORIES)
+  const hiddenCategoryCount = categories.length - visibleCategories.length
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -168,21 +176,48 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
             className="h-10 pl-9"
           />
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {categories.map((c) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            onClick={() => setCategory('All')}
+            className={cn(
+              'focus-ring rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+              category === 'All'
+                ? 'border-primary/50 bg-accent text-accent-foreground'
+                : 'border-border bg-card text-muted-foreground hover:bg-elevated hover:text-foreground'
+            )}
+          >
+            All {items.length}
+          </button>
+          {visibleCategories.map(([name, count]) => (
             <button
-              key={c}
-              onClick={() => setCategory(c)}
+              key={name}
+              onClick={() => setCategory(name)}
               className={cn(
                 'focus-ring rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                category === c
+                category === name
                   ? 'border-primary/50 bg-accent text-accent-foreground'
                   : 'border-border bg-card text-muted-foreground hover:bg-elevated hover:text-foreground'
               )}
             >
-              {c}
+              {name} <span className="text-muted-foreground">{count}</span>
             </button>
           ))}
+          {hiddenCategoryCount > 0 && (
+            <button
+              onClick={() => setShowAllCategories(true)}
+              className="focus-ring rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              +{hiddenCategoryCount} more
+            </button>
+          )}
+          {showAllCategories && categories.length > TOP_CATEGORIES && (
+            <button
+              onClick={() => setShowAllCategories(false)}
+              className="focus-ring rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Show fewer
+            </button>
+          )}
         </div>
       </div>
 
@@ -232,7 +267,7 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
                         <Icon className="size-5" />
                       </span>
                       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="flex items-center gap-1.5">
+                        <span className="flex min-w-0 items-center gap-1.5">
                           <span className="truncate font-heading text-[1.05rem] font-semibold leading-tight text-foreground">
                             {item.title}
                           </span>

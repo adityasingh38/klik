@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseFrontmatter, summarise } from '../../../src/main/skills/catalog'
+import { parseFrontmatter, summarise, skillPathsFromTree } from '../../../src/main/skills/catalog'
 
 describe('parseFrontmatter', () => {
   it('reads name and description out of a SKILL.md head', () => {
@@ -45,5 +45,35 @@ describe('summarise', () => {
 
   it('falls back when a skill declares no description', () => {
     expect(summarise('', 'Fallback text.')).toBe('Fallback text.')
+  })
+})
+
+describe('skillPathsFromTree', () => {
+  it('finds a skill wherever SKILL.md lives in the tree', () => {
+    const paths = skillPathsFromTree([
+      'README.md',
+      'skills/brainstorming/SKILL.md',
+      'plugins/accessibility-compliance/skills/wcag-audit-patterns/SKILL.md',
+      '.claude/skills/animejs/SKILL.md'
+    ])
+    expect(paths.map((p) => p.path)).toEqual([
+      'skills/brainstorming',
+      'plugins/accessibility-compliance/skills/wcag-audit-patterns',
+      '.claude/skills/animejs'
+    ])
+  })
+
+  it('takes the category from the plugin folder above a skills directory', () => {
+    const [entry] = skillPathsFromTree(['plugins/agent-teams/skills/parallel-debugging/SKILL.md'])
+    expect(entry.category).toBe('Agent Teams')
+  })
+
+  it('does not use a dotfile directory as a category', () => {
+    const [entry] = skillPathsFromTree(['.claude/skills/animejs/SKILL.md'])
+    expect(entry.category).toBe('Skills')
+  })
+
+  it('ignores files that merely mention SKILL.md and unsafe paths', () => {
+    expect(skillPathsFromTree(['docs/about-SKILL.md.txt', 'a/../../etc/SKILL.md'])).toHaveLength(0)
   })
 })

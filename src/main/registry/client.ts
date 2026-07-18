@@ -235,7 +235,15 @@ export async function loadRegistry(userDataDir: string): Promise<RegistryLoadRes
   try {
     const first = await fetchPage()
     const entries = toEntries(first.servers)
-    if (entries.length > 0) writeCache(userDataDir, entries)
+
+    // Only seed the cache from page one when there's nothing better already there.
+    // The registry runs to ~15,000 entries, so overwriting a complete cache with a
+    // single page would shrink the catalogue every launch until the background walk
+    // finished — and lose it entirely if the app closed first.
+    const existing = readCache(userDataDir)
+    if (entries.length > 0 && (!existing || existing.length <= entries.length)) {
+      writeCache(userDataDir, entries)
+    }
 
     if (first.metadata.nextCursor) {
       void completeInBackground(userDataDir, first.servers, first.metadata.nextCursor).catch(() => {})

@@ -70,7 +70,7 @@ export function ServerCard(props: ServerCardProps): React.JSX.Element {
         <div className="relative flex items-start gap-3.5">
           <ServerLogo server={server} size={44} className="rounded-xl" />
           <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="flex items-center gap-1.5">
+            <span className="flex min-w-0 items-center gap-1.5">
               <span className="truncate font-heading text-[1.05rem] font-semibold leading-tight text-foreground">
                 {server.title}
               </span>

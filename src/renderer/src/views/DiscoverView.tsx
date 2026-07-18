@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { ListFilter, Check, ShieldCheck, TriangleAlert, ArrowLeft } from 'lucide-react'
 import { motion } from 'motion/react'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,7 @@ import { ServerLogo } from '../components/ServerLogo'
 import { HostCompat } from '../components/HostCompat'
 import { ServerCard } from '../components/app/ServerCard'
 import { SPRING, staggerDelay } from '@/lib/motion'
+import { rankServers } from '../../../shared/ranking'
 import { cn } from '@/lib/utils'
 import type { ClientId, ClientInfo, MergedServerEntry } from '../../../shared/types'
 
@@ -26,6 +27,9 @@ interface DiscoverViewProps {
   onInstall: () => void
   onOpenServer: (server: MergedServerEntry) => void
 }
+
+/** How many catalogue cards mount at once before "Show more". */
+const PAGE_SIZE = 48
 
 /** Curated servers lead the catalogue; these are the ones worth arriving on. */
 const FEATURED_IDS = [
@@ -88,9 +92,13 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
     return ['All', ...[...counts.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c)]
   }, [servers])
 
+  // Ranked once per catalogue change, not per keystroke — scoring 15,000 entries on
+  // every character typed is the difference between instant and janky.
+  const ranked = useMemo(() => rankServers(servers), [servers])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return servers.filter((s) => {
+    return ranked.filter((s) => {
       if (verifiedOnly && !s.curation?.verified) return false
       if (category !== 'All' && s.category !== category) return false
       if (!q) return true
@@ -100,7 +108,14 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
         s.id.toLowerCase().includes(q)
       )
     })
-  }, [servers, search, verifiedOnly, category])
+  }, [ranked, search, verifiedOnly, category])
+
+  /** The registry is ~15,000 entries; only a window of them is ever mounted. */
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+  }, [search, category, verifiedOnly, browsingAll])
 
   function toggleServer(id: string, checked: boolean): void {
     onChangeSelectedServerIds(
@@ -248,59 +263,28 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
               )}
             </div>
 
-            <div className="flex flex-col gap-2">
-              {filtered.map((server) => {
-                const isInstalled = installedServerIds.includes(server.id)
-                const isSelected = selectedServerIds.includes(server.id)
-                return (
-                  <div
-                    key={server.id}
-                    className={cn(
-                      'surface-raised flex items-center gap-3 overflow-hidden rounded-xl border px-3.5 py-3 transition-colors',
-                      isSelected ? 'border-primary/40 bg-elevated' : 'border-border bg-card hover:bg-elevated'
-                    )}
-                  >
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={(checked: boolean) => toggleServer(server.id, checked)}
-                      aria-label={`Select ${server.title}`}
-                    />
-                    <button
-                      onClick={() => onOpenServer(server)}
-                      className="focus-ring flex min-w-0 flex-1 items-center gap-3 rounded-sm text-left"
-                    >
-                      <ServerLogo server={server} size={34} className="rounded-lg" />
-                      <span className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate text-sm font-medium text-foreground">{server.title}</span>
-                        <span className="truncate text-xs text-muted-foreground">{server.description}</span>
-                        <HostCompat
-                          transport={server.transport}
-                          detectedClientIds={detectedClientIds}
-                          variant="inline"
-                          className="mt-1.5"
-                        />
-                      </span>
-                    </button>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <MetaTag>{server.category}</MetaTag>
-                      {server.curation?.verified && (
-                        <Badge className="gap-1 bg-accent text-accent-foreground">
-                          <ShieldCheck className="size-3" /> Verified
-                        </Badge>
-                      )}
-                      {(server.curation?.warnings?.length ?? 0) > 0 && (
-                        <span title={server.curation?.warnings.join(' · ')}>
-                          <TriangleAlert className="size-4 text-destructive" />
-                        </span>
-                      )}
-                      {isInstalled && <Badge className="bg-success text-success-foreground">Installed</Badge>}
-                    </div>
-                  </div>
-                )
-              })}
+            <div className="grid auto-rows-min gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {visible.map((server, index) => (
+                <motion.div
+                  key={server.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ ...SPRING.standard, delay: staggerDelay(index % PAGE_SIZE, 8) }}
+                  className="flex"
+                >
+                  <ServerCard
+                    server={server}
+                    installed={installedServerIds.includes(server.id)}
+                    selected={selectedServerIds.includes(server.id)}
+                    detectedClientIds={detectedClientIds}
+                    onOpen={onOpenServer}
+                    onToggle={toggleServer}
+                  />
+                </motion.div>
+              ))}
 
               {!isLoadingServers && filtered.length === 0 && (
-                <div className="flex flex-col items-center justify-center gap-1 py-16 text-center">
+                <div className="col-span-full flex flex-col items-center justify-center gap-1 py-16 text-center">
                   <p className="text-sm font-medium text-foreground">No match for these filters</p>
                   <p className="text-xs text-muted-foreground">
                     Try another category, or clear the filter to see all {servers.length}.
@@ -308,6 +292,19 @@ export function DiscoverView(props: DiscoverViewProps): React.JSX.Element {
                 </div>
               )}
             </div>
+
+            {visible.length < filtered.length && (
+              <button
+                type="button"
+                onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+                className="focus-ring surface-raised mx-auto flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-elevated"
+              >
+                Show more
+                <span className="text-muted-foreground">
+                  {visible.length} of {filtered.length}
+                </span>
+              </button>
+            )}
           </div>
         )}
       </div>

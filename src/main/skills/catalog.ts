@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 import type { SkillEntry, SkillTier } from '../../shared/catalog'
 
 const USER_AGENT = 'Klik'
+const API_ROOT = 'https://api.github.com'
 const TIMEOUT_MS = 12000
 /** A day is long enough that Klik isn't hammering GitHub, short enough to stay current. */
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
@@ -11,7 +12,7 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000
  * are derived can't reach anyone for a day — the cache would keep serving entries
  * built by the old logic.
  */
-const CATALOG_VERSION = 2
+const CATALOG_VERSION = 3
 
 export interface SkillSource {
   id: string
@@ -38,8 +39,40 @@ export const DEFAULT_SKILL_SOURCES: SkillSource[] = [
     author: 'Anthropic',
     tier: 'official',
     repositoryUrl: 'https://github.com/anthropics/skills'
+  },
+  {
+    id: 'obra/superpowers',
+    owner: 'obra',
+    repo: 'superpowers',
+    branch: 'main',
+    author: 'obra',
+    tier: 'community',
+    repositoryUrl: 'https://github.com/obra/superpowers'
+  },
+  {
+    id: 'wshobson/agents',
+    owner: 'wshobson',
+    repo: 'agents',
+    branch: 'main',
+    author: 'wshobson',
+    tier: 'community',
+    repositoryUrl: 'https://github.com/wshobson/agents'
+  },
+  {
+    id: 'freshtechbro/claudedesignskills',
+    owner: 'freshtechbro',
+    repo: 'claudedesignskills',
+    branch: 'main',
+    author: 'freshtechbro',
+    tier: 'community',
+    repositoryUrl: 'https://github.com/freshtechbro/claudedesignskills'
   }
 ]
+
+/** Skills read per source. Bounds a runaway repository, not the honest ones. */
+const MAX_SKILLS_PER_SOURCE = 150
+/** Parallel frontmatter reads. These hit the raw CDN, not the rate-limited API. */
+const READ_CONCURRENCY = 12
 
 interface Marketplace {
   plugins?: Array<{ name?: string; skills?: string[] }>
@@ -130,23 +163,88 @@ export function titleFrom(name: string): string {
     .join(' ')
 }
 
-/** Skill paths declared by a source's manifest, each tagged with its group. */
-async function listSkillPaths(source: SkillSource): Promise<Array<{ path: string; category: string }>> {
-  const raw = await getText(rawUrl(source, '.claude-plugin/marketplace.json'))
-  const parsed = JSON.parse(raw) as Marketplace
-  const seen = new Set<string>()
-  const out: Array<{ path: string; category: string }> = []
-  for (const plugin of parsed.plugins ?? []) {
-    const group = plugin.name ?? ''
-    const category = GROUP_LABELS[group] ?? (group ? titleFrom(group.replace(/-skills$/, '')) : 'Skills')
-    for (const entry of plugin.skills ?? []) {
-      const path = entry.replace(/^\.\//, '').replace(/\/$/, '')
-      if (seen.has(path)) continue
-      seen.add(path)
-      out.push({ path, category })
+/**
+ * Skills declared by a manifest. Only Anthropic's repository actually populates the
+ * `skills` array — every other marketplace leaves it empty and simply keeps SKILL.md
+ * files in the tree, which is what discoverFromTree handles.
+ */
+async function listDeclaredPaths(source: SkillSource): Promise<Array<{ path: string; category: string }>> {
+  try {
+    const raw = await getText(rawUrl(source, '.claude-plugin/marketplace.json'))
+    const parsed = JSON.parse(raw) as Marketplace
+    const seen = new Set<string>()
+    const out: Array<{ path: string; category: string }> = []
+    for (const plugin of parsed.plugins ?? []) {
+      const group = plugin.name ?? ''
+      const category = GROUP_LABELS[group] ?? (group ? titleFrom(group.replace(/-skills$/, '')) : 'Skills')
+      for (const entry of plugin.skills ?? []) {
+        const path = entry.replace(/^\.\//, '').replace(/\/$/, '')
+        if (seen.has(path)) continue
+        seen.add(path)
+        out.push({ path, category })
+      }
     }
+    return out
+  } catch {
+    return []
+  }
+}
+
+interface TreeResponse {
+  tree?: Array<{ path: string; type: string }>
+  truncated?: boolean
+}
+
+/**
+ * Every SKILL.md in the repository, found in a single request. This is the universal
+ * path: a skill is a directory containing SKILL.md, whatever the repository calls the
+ * folders above it.
+ *
+ * The category comes from the plugin directory a skill sits under, which is the only
+ * grouping these repositories actually express.
+ */
+export function skillPathsFromTree(paths: string[]): Array<{ path: string; category: string }> {
+  const out: Array<{ path: string; category: string }> = []
+  for (const full of paths) {
+    if (!full.endsWith('SKILL.md')) continue
+    const dir = full.slice(0, -'/SKILL.md'.length)
+    if (!dir || dir.includes('..')) continue
+
+    const segments = dir.split('/')
+    // `plugins/<group>/skills/<name>` and `.claude/skills/<name>` both appear; the
+    // useful grouping is the segment before a `skills` folder, when there is one.
+    const skillsIdx = segments.lastIndexOf('skills')
+    const groupSegment = skillsIdx > 0 ? segments[skillsIdx - 1] : ''
+    const category =
+      groupSegment && !groupSegment.startsWith('.')
+        ? titleFrom(groupSegment.replace(/-skills$/, ''))
+        : 'Skills'
+
+    out.push({ path: dir, category })
   }
   return out
+}
+
+async function discoverFromTree(source: SkillSource): Promise<Array<{ path: string; category: string }>> {
+  const url = `${API_ROOT}/repos/${source.owner}/${source.repo}/git/trees/${source.branch}?recursive=1`
+  const raw = await getText(url)
+  const parsed = JSON.parse(raw) as TreeResponse
+  return skillPathsFromTree((parsed.tree ?? []).map((t) => t.path))
+}
+
+/** Runs `worker` over `items` a few at a time, so a large source can't flood the CDN. */
+async function mapLimited<T, R>(items: T[], limit: number, worker: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = []
+  let cursor = 0
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor
+      cursor += 1
+      results[index] = await worker(items[index])
+    }
+  })
+  await Promise.all(runners)
+  return results
 }
 
 async function toEntry(source: SkillSource, path: string, category: string): Promise<SkillEntry | null> {
@@ -225,8 +323,12 @@ export async function fetchSkillCatalog(
   const perSource = await Promise.all(
     sources.map(async (source) => {
       try {
-        const paths = await listSkillPaths(source)
-        const entries = await Promise.all(paths.map(({ path, category }) => toEntry(source, path, category)))
+        const declared = await listDeclaredPaths(source)
+        const paths = declared.length > 0 ? declared : await discoverFromTree(source)
+        const bounded = paths.slice(0, MAX_SKILLS_PER_SOURCE)
+        const entries = await mapLimited(bounded, READ_CONCURRENCY, ({ path, category }) =>
+          toEntry(source, path, category)
+        )
         return entries.filter((e): e is SkillEntry => e !== null)
       } catch {
         return []
