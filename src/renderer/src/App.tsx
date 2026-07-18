@@ -27,6 +27,7 @@ import { PLUGINS_CATALOG } from './data/pluginsCatalog'
 import { InstallProgressView } from './components/InstallProgressView'
 import { SecretPromptDialog } from './components/SecretPromptDialog'
 import { klikApi } from './api/klikApi'
+import { shortcut } from './lib/platform'
 import type {
   ClientId,
   ClientInfo,
@@ -276,7 +277,7 @@ export default function App(): React.JSX.Element {
             >
               <Search className="size-3.5" />
               <span className="hidden sm:inline">Search</span>
-              <Kbd className="ml-1">⌘K</Kbd>
+              <Kbd className="ml-1">{shortcut('K')}</Kbd>
             </button>
           </header>
 

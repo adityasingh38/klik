@@ -29,6 +29,12 @@ interface InstalledPluginInfo {
 }
 
 const klikApi = {
+  /**
+   * The host platform, read synchronously so the UI can label shortcuts correctly
+   * on first paint. Klik ships for Windows and macOS, and the modifier key differs.
+   */
+  platform: process.platform as NodeJS.Platform,
+
   getServers: (): Promise<GetServersResult> => ipcRenderer.invoke('klik:getServers'),
   getClients: (): Promise<ClientInfo[]> => ipcRenderer.invoke('klik:getClients'),
   getInstalled: (): Promise<InstalledServerRecord[]> => ipcRenderer.invoke('klik:getInstalled'),
