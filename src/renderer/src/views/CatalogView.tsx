@@ -80,7 +80,7 @@ interface CatalogViewProps {
 
 function MetaTag({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
-    <span className="rounded border border-border/70 px-1.5 py-px text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+    <span className="rounded border border-border/70 px-1.5 py-px text-[11px] font-medium text-muted-foreground">
       {children}
     </span>
   )
@@ -380,18 +380,18 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
 
               <div className="grid grid-cols-2 gap-4 rounded-lg border border-border bg-card/60 p-4">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Category</span>
+                  <span className="text-[11px] font-medium text-muted-foreground">Category</span>
                   <span className="font-mono text-xs text-foreground">{detail.category}</span>
                 </div>
                 {detail.author && (
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Author</span>
+                    <span className="text-[11px] font-medium text-muted-foreground">Author</span>
                     <span className="font-mono text-xs text-foreground">{detail.author}</span>
                   </div>
                 )}
                 {detail.source && (
                   <div className="col-span-2 flex flex-col gap-0.5">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                    <span className="text-[11px] font-medium text-muted-foreground">
                       {detail.sourceLabel ?? 'Source'}
                     </span>
                     <span className="break-all font-mono text-xs text-foreground">{detail.source}</span>

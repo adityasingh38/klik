@@ -44,7 +44,7 @@ export function HostCompat(props: HostCompatProps): React.JSX.Element | null {
     const overflowLabel = ordered.slice(max).map((h) => h.short).join(', ')
     return (
       <span className={cn('inline-flex flex-wrap items-center gap-1', className)}>
-        <span className="mr-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="mr-0.5 text-[11px] font-medium text-muted-foreground">
           Works in
         </span>
         {shown.map((host) => (
@@ -71,12 +71,12 @@ export function HostCompat(props: HostCompatProps): React.JSX.Element | null {
 
   return (
     <div className={cn('flex flex-col gap-2.5', className)}>
-      <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
         Compatible with
       </div>
       {detected.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-success-foreground">
+          <span className="text-[11px] font-medium text-success-foreground">
             Detected on this device
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -89,7 +89,7 @@ export function HostCompat(props: HostCompatProps): React.JSX.Element | null {
       {others.length > 0 && (
         <div className="flex flex-col gap-1.5">
           {detected.length > 0 && (
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="text-[11px] font-medium text-muted-foreground">
               Also compatible
             </span>
           )}

@@ -46,7 +46,7 @@ const FEATURED_IDS = [
 
 function MetaTag({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
-    <span className="rounded border border-border/70 px-1.5 py-px text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+    <span className="rounded border border-border/70 px-1.5 py-px text-[11px] font-medium text-muted-foreground">
       {children}
     </span>
   )

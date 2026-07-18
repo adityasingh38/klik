@@ -37,13 +37,21 @@ import type {
   InstallStepResult,
   MergedServerEntry
 } from '../../shared/types'
-import type { DetectedTool, SkillEntry } from '../../shared/catalog'
+import type { DetectedTool, SkillEntry, InstalledSkillRecord } from '../../shared/catalog'
+
+/** Mirrors the shape Claude Code's CLI reports for an installed plugin. */
+interface InstalledPluginRow {
+  id: string
+  version: string
+  enabled: boolean
+  installPath: string
+}
 
 const SECTION_TITLES: Record<AppSection, { title: string; subtitle: string }> = {
   mcp: { title: 'MCP Servers', subtitle: 'Browse and install MCP servers' },
   skills: { title: 'Skills', subtitle: 'On-demand capabilities for your AI tools' },
   plugins: { title: 'Plugins', subtitle: 'Marketplace bundles: commands, agents, and more' },
-  installed: { title: 'Installed', subtitle: 'Servers running in your tools' },
+  installed: { title: 'Installed', subtitle: 'What your tools currently have, in one place' },
   tools: { title: 'Tools', subtitle: 'Detected AI tools and install targets' },
   settings: { title: 'Settings', subtitle: 'Registry, appearance, and about' }
 }
@@ -73,8 +81,8 @@ function AppShell(): React.JSX.Element {
   const [tools, setTools] = useState<DetectedTool[]>([])
   // Mirrored here purely so the palette can badge results accurately; each catalog
   // still owns its own copy for its list.
-  const [installedSkillIds, setInstalledSkillIds] = useState<string[]>([])
-  const [installedPluginIds, setInstalledPluginIds] = useState<string[]>([])
+  const [installedSkills, setInstalledSkills] = useState<InstalledSkillRecord[]>([])
+  const [installedPlugins, setInstalledPlugins] = useState<InstalledPluginRow[]>([])
   /** The live skill catalogue. Starts as the bundled copy, swaps when the fetch lands. */
   const [skills, setSkills] = useState<SkillEntry[]>(SKILLS_CATALOG)
   const detectedToolIds = useMemo(
@@ -131,8 +139,8 @@ function AppShell(): React.JSX.Element {
         if (live.length > 0) setSkills(live)
       })
       .catch(() => {})
-    klikApi.getInstalledSkills().then((r) => setInstalledSkillIds(r.map((x) => x.skillId)))
-    klikApi.getInstalledPlugins().then((r) => setInstalledPluginIds(r.map((x) => x.id))).catch(() => {})
+    klikApi.getInstalledSkills().then(setInstalledSkills)
+    klikApi.getInstalledPlugins().then(setInstalledPlugins).catch(() => {})
     refreshInstalled()
   }, [loadServers, refreshInstalled])
 
@@ -167,7 +175,7 @@ function AppShell(): React.JSX.Element {
         title: s.title,
         description: s.description,
         category: s.category,
-        installed: installedSkillIds.includes(s.id)
+        installed: installedSkills.some((r) => r.skillId === s.id)
       })),
       ...PLUGINS_CATALOG.map((p) => ({
         kind: 'plugin' as const,
@@ -175,10 +183,10 @@ function AppShell(): React.JSX.Element {
         title: p.title,
         description: p.description,
         category: p.category,
-        installed: installedPluginIds.includes(p.id)
+        installed: installedPlugins.some((r) => r.id === p.id)
       }))
     ]
-  }, [servers, skills, installedServerIds, installedSkillIds, installedPluginIds])
+  }, [servers, skills, installedServerIds, installedSkills, installedPlugins])
 
   function handlePaletteSelect(item: PaletteItem): void {
     if (item.kind === 'mcp' && item.server) {
@@ -321,7 +329,7 @@ function AppShell(): React.JSX.Element {
           serverCount={servers.length}
           skillCount={skills.length}
           pluginCount={PLUGINS_CATALOG.length}
-          installedCount={installedRecords.length}
+          installedCount={installedRecords.length + installedSkills.length + installedPlugins.length}
           toolCount={clients.filter((c) => c.installed).length}
         />
 
@@ -423,6 +431,21 @@ function AppShell(): React.JSX.Element {
                       servers={servers}
                       installed={installedRecords}
                       clients={clients}
+                      skills={skills}
+                      installedSkills={installedSkills}
+                      plugins={PLUGINS_CATALOG}
+                      installedPlugins={installedPlugins}
+                      onUninstallSkill={(id) => {
+                        void klikApi.uninstallSkill(id).then(() =>
+                          klikApi.getInstalledSkills().then(setInstalledSkills)
+                        )
+                      }}
+                      onUninstallPlugin={(id) => {
+                        void klikApi
+                          .uninstallPlugin(id)
+                          .then(() => klikApi.getInstalledPlugins().then(setInstalledPlugins))
+                          .catch(() => {})
+                      }}
                       onUninstall={handleUninstall}
                       onOpenServer={openServer}
                       onGoDiscover={() => setSection('mcp')}
