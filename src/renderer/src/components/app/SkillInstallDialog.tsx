@@ -93,11 +93,17 @@ export function SkillInstallDialog(props: SkillInstallDialogProps): React.JSX.El
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-heading">
-            {phase === 'done' ? 'Install complete' : 'Review before installing'}
+            {phase === 'done'
+              ? succeeded.length > 0
+                ? `${skill.title} installed`
+                : `${skill.title} was not installed`
+              : 'Review before installing'}
           </DialogTitle>
           <DialogDescription>
             {phase === 'done'
-              ? 'Klik finished writing this skill.'
+              ? succeeded.length > 0
+                ? `${preview?.files.length ?? 0} files written.`
+                : 'Nothing was written.'
               : 'Exactly which files Klik will download and where they land. Nothing is written until you confirm.'}
           </DialogDescription>
         </DialogHeader>
@@ -117,19 +123,34 @@ export function SkillInstallDialog(props: SkillInstallDialogProps): React.JSX.El
           </div>
         ) : phase === 'done' ? (
           <div className="flex max-h-[52vh] flex-col gap-1.5 overflow-y-auto pr-1">
-            {results.map((r, i) => (
-              <div key={i} className="flex items-start gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs">
-                {r.status === 'done' ? (
-                  <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-success-foreground" />
-                ) : (
-                  <XCircle className="mt-0.5 size-3.5 shrink-0 text-destructive" />
-                )}
-                <span className="flex flex-col gap-0.5">
-                  <span className="font-medium text-foreground">{r.toolId}</span>
-                  {r.message && <span className="text-muted-foreground">{r.message}</span>}
-                </span>
-              </div>
-            ))}
+            {results.map((r, i) => {
+              // The tool's own name and the real path — a raw tool id tells the user
+              // nothing about what just happened to their machine.
+              const target = preview?.targets.find((t) => t.toolId === r.toolId)
+              return (
+                <div key={i} className="flex items-start gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs">
+                  {r.status === 'done' ? (
+                    <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-success-foreground" />
+                  ) : (
+                    <XCircle className="mt-0.5 size-3.5 shrink-0 text-destructive" />
+                  )}
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="font-medium text-foreground">{target?.displayName ?? r.toolId}</span>
+                    {target?.skillDir && (
+                      <span className="break-all font-mono text-[11px] text-muted-foreground">
+                        {target.skillDir}
+                      </span>
+                    )}
+                    {r.message && <span className="text-muted-foreground">{r.message}</span>}
+                  </span>
+                </div>
+              )
+            })}
+            {succeeded.length > 0 && (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Skills are loaded when a session starts — restart the tool to use this one.
+              </p>
+            )}
           </div>
         ) : (
           preview && (
