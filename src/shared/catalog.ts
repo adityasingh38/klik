@@ -12,6 +12,11 @@ export interface SkillEntry {
   id: string
   title: string
   description: string
+  /**
+   * Directory name the skill is written as, e.g. `pdf` → ~/.claude/skills/pdf.
+   * Explicit rather than derived from the id so the on-disk name is never a surprise.
+   */
+  installName: string
   /** Where the skill is fetched from (git repo, raw file, or marketplace). */
   source: string
   author?: string
@@ -40,6 +45,77 @@ export interface PluginEntry {
   compatibleTools: string[]
   verified: boolean
   warnings: string[]
+}
+
+/** A tool detected on this machine, and what it can consume. */
+export interface DetectedTool {
+  id: string
+  displayName: string
+  installed: boolean
+  capabilities: {
+    mcp?: { configPath: string }
+    skills?: { dir: string }
+    plugins?: { settingsPath: string; pluginsDir: string }
+  }
+}
+
+/** One file a skill install would write, resolved before anything is fetched. */
+export interface SkillFilePreview {
+  relativePath: string
+  bytes: number
+}
+
+export interface SkillInstallTargetPreview {
+  toolId: string
+  displayName: string
+  /** The exact directory that will be created/replaced. */
+  skillDir: string
+  supported: boolean
+  reason?: string
+  /** True when a skill of the same name is already installed there. */
+  wouldOverwrite: boolean
+}
+
+/**
+ * Everything a skill install is about to do, computed before a single byte is
+ * written — same contract as the MCP install preview: approve a concrete action,
+ * never a black box.
+ */
+export interface SkillInstallPreview {
+  skillId: string
+  title: string
+  source: string
+  files: SkillFilePreview[]
+  totalBytes: number
+  targets: SkillInstallTargetPreview[]
+  warnings: string[]
+  verified: boolean
+}
+
+export interface SkillPreflightRequest {
+  skill: SkillEntry
+  targetToolIds: string[]
+}
+
+export interface SkillInstallRequest {
+  skill: SkillEntry
+  targetToolIds: string[]
+  /** Explicit consent to replace an existing skill directory of the same name. */
+  allowOverwrite?: boolean
+}
+
+export interface SkillInstallStepResult {
+  skillId: string
+  toolId: string
+  status: 'pending' | 'running' | 'done' | 'error'
+  message?: string
+}
+
+export interface InstalledSkillRecord {
+  skillId: string
+  installName: string
+  tools: string[]
+  installedAt: string
 }
 
 /**

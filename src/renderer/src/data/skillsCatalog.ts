@@ -1,59 +1,44 @@
 import type { SkillEntry } from '../../../shared/catalog'
 
 /**
- * A curated catalog of well-known skills. A skill is a packaged instruction/
- * capability the tool loads on demand. The document skills below are Anthropic's
- * own (github.com/anthropics/skills) and install into Claude's skills directory;
- * `compatibleTools` carries the model forward as portable skill/rule formats land
- * in other tools. Phase 3 wires the actual fetch-and-write engine.
+ * A curated catalog of well-known skills. A skill is a packaged capability the tool
+ * loads on demand. These are Anthropic's own (github.com/anthropics/skills) and
+ * install into a tool's skills directory; each `source` was verified against the
+ * repository rather than assumed. `compatibleTools` carries the model forward as
+ * portable skill formats land in other tools.
  */
-export const SKILLS_CATALOG: SkillEntry[] = [
-  {
-    id: 'anthropics/skills:pdf',
-    title: 'PDF',
-    description: 'Read, fill, split, merge, and create PDF files — including form filling and signatures.',
-    source: 'github.com/anthropics/skills/document-skills/pdf',
+function anthropicSkill(
+  name: string,
+  title: string,
+  description: string,
+  category: string
+): SkillEntry {
+  return {
+    id: `anthropics/skills:${name}`,
+    installName: name,
+    title,
+    description,
+    source: `github.com/anthropics/skills/skills/${name}`,
     author: 'Anthropic',
     repositoryUrl: 'https://github.com/anthropics/skills',
-    category: 'Documents',
-    compatibleTools: ['claude-code'],
-    verified: true,
-    warnings: []
-  },
-  {
-    id: 'anthropics/skills:docx',
-    title: 'DOCX',
-    description: 'Create and edit Word documents with tracked changes, comments, and formatting preserved.',
-    source: 'github.com/anthropics/skills/document-skills/docx',
-    author: 'Anthropic',
-    repositoryUrl: 'https://github.com/anthropics/skills',
-    category: 'Documents',
-    compatibleTools: ['claude-code'],
-    verified: true,
-    warnings: []
-  },
-  {
-    id: 'anthropics/skills:xlsx',
-    title: 'XLSX',
-    description: 'Read and write Excel spreadsheets — formulas, multiple sheets, and cell formatting intact.',
-    source: 'github.com/anthropics/skills/document-skills/xlsx',
-    author: 'Anthropic',
-    repositoryUrl: 'https://github.com/anthropics/skills',
-    category: 'Documents',
-    compatibleTools: ['claude-code'],
-    verified: true,
-    warnings: []
-  },
-  {
-    id: 'anthropics/skills:pptx',
-    title: 'PPTX',
-    description: 'Build and edit PowerPoint decks — layouts, speaker notes, and images handled programmatically.',
-    source: 'github.com/anthropics/skills/document-skills/pptx',
-    author: 'Anthropic',
-    repositoryUrl: 'https://github.com/anthropics/skills',
-    category: 'Documents',
+    category,
     compatibleTools: ['claude-code'],
     verified: true,
     warnings: []
   }
+}
+
+export const SKILLS_CATALOG: SkillEntry[] = [
+  anthropicSkill('pdf', 'PDF', 'Read, merge, split, rotate, watermark, fill forms, and OCR scanned PDFs.', 'Documents'),
+  anthropicSkill('docx', 'DOCX', 'Create and edit Word documents — headings, tables of contents, tracked changes, and comments.', 'Documents'),
+  anthropicSkill('xlsx', 'XLSX', 'Open, edit, and create spreadsheets — formulas, charts, formatting, and messy-data cleanup.', 'Documents'),
+  anthropicSkill('pptx', 'PPTX', 'Build and edit slide decks — layouts, templates, speaker notes, and comments.', 'Documents'),
+  anthropicSkill('doc-coauthoring', 'Doc Co-authoring', 'A structured workflow for writing docs, proposals, specs, and decision records.', 'Documents'),
+  anthropicSkill('mcp-builder', 'MCP Builder', 'Build high-quality MCP servers in Python (FastMCP) or Node/TypeScript.', 'Development'),
+  anthropicSkill('skill-creator', 'Skill Creator', 'Create, improve, and benchmark skills — including evals and description tuning.', 'Development'),
+  anthropicSkill('webapp-testing', 'Webapp Testing', 'Drive and debug local web apps with Playwright — screenshots and browser logs.', 'Development'),
+  anthropicSkill('frontend-design', 'Frontend Design', 'Distinctive, intentional visual design that avoids templated defaults.', 'Design'),
+  anthropicSkill('canvas-design', 'Canvas Design', 'Create original posters and static visual art as .png and .pdf.', 'Design'),
+  anthropicSkill('algorithmic-art', 'Algorithmic Art', 'Generative art with p5.js — flow fields, particle systems, seeded randomness.', 'Design'),
+  anthropicSkill('theme-factory', 'Theme Factory', 'Style slides, docs, and pages with 10 preset themes or generate one on the fly.', 'Design')
 ]

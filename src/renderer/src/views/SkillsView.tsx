@@ -1,7 +1,10 @@
-import React, { useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { CatalogView, type CatalogDetailItem, type CatalogKindMeta } from './CatalogView'
+import { SkillInstallDialog } from '../components/app/SkillInstallDialog'
 import { SKILLS_CATALOG } from '../data/skillsCatalog'
+import { klikApi } from '../api/klikApi'
+import type { DetectedTool, SkillEntry } from '../../../shared/catalog'
 
 const SKILL_META: CatalogKindMeta = {
   icon: Sparkles,
@@ -9,14 +12,30 @@ const SKILL_META: CatalogKindMeta = {
   compatNote:
     'A skill installs as an on-demand capability file. Compatibility depends on which tools load skill files — not the model behind each one.',
   actionLabel: 'Install skill',
-  actionPendingReason: 'One-click skill install lands in the next update.'
+  actionPendingReason: 'No detected tool can accept a skill install.'
 }
 
 interface SkillsViewProps {
   detectedToolIds: string[]
+  tools: DetectedTool[]
 }
 
-export function SkillsView({ detectedToolIds }: SkillsViewProps): React.JSX.Element {
+export function SkillsView({ detectedToolIds, tools }: SkillsViewProps): React.JSX.Element {
+  const [installedIds, setInstalledIds] = useState<string[]>([])
+  const [pending, setPending] = useState<SkillEntry | null>(null)
+
+  const refreshInstalled = useCallback((): void => {
+    klikApi.getInstalledSkills().then((records) => setInstalledIds(records.map((r) => r.skillId)))
+  }, [])
+
+  useEffect(() => refreshInstalled(), [refreshInstalled])
+
+  /** Tools that are present on this machine and can actually take a skill. */
+  const skillCapableToolIds = useMemo(
+    () => tools.filter((t) => t.installed && t.capabilities.skills).map((t) => t.id),
+    [tools]
+  )
+
   const items = useMemo<CatalogDetailItem[]>(
     () =>
       SKILLS_CATALOG.map((s) => ({
@@ -36,5 +55,43 @@ export function SkillsView({ detectedToolIds }: SkillsViewProps): React.JSX.Elem
     []
   )
 
-  return <CatalogView items={items} detectedToolIds={detectedToolIds} meta={SKILL_META} />
+  /** Where a given skill would go: declared compatibility ∩ what's actually here. */
+  function targetsFor(skill: SkillEntry): string[] {
+    return skill.compatibleTools.filter((id) => skillCapableToolIds.includes(id))
+  }
+
+  function handleAction(item: CatalogDetailItem): void {
+    const skill = SKILLS_CATALOG.find((s) => s.id === item.id)
+    if (skill && targetsFor(skill).length > 0) setPending(skill)
+  }
+
+  function handleUninstall(id: string): void {
+    void klikApi.uninstallSkill(id).then(refreshInstalled)
+  }
+
+  const canInstallAny = skillCapableToolIds.length > 0
+
+  return (
+    <>
+      <CatalogView
+        items={items}
+        detectedToolIds={detectedToolIds}
+        meta={SKILL_META}
+        installedIds={installedIds}
+        onAction={canInstallAny ? handleAction : undefined}
+        onUninstall={handleUninstall}
+      />
+      {pending && (
+        <SkillInstallDialog
+          skill={pending}
+          targetToolIds={targetsFor(pending)}
+          onCancel={() => setPending(null)}
+          onDone={() => {
+            setPending(null)
+            refreshInstalled()
+          }}
+        />
+      )}
+    </>
+  )
 }

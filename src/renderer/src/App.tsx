@@ -35,6 +35,7 @@ import type {
   InstallStepResult,
   MergedServerEntry
 } from '../../shared/types'
+import type { DetectedTool } from '../../shared/catalog'
 
 const SECTION_TITLES: Record<AppSection, { title: string; subtitle: string }> = {
   mcp: { title: 'MCP Servers', subtitle: 'Browse and install MCP servers' },
@@ -58,9 +59,10 @@ export default function App(): React.JSX.Element {
   const [selectedClientIds, setSelectedClientIds] = useState<ClientId[]>([])
 
   const [section, setSection] = useState<AppSection>('mcp')
+  const [tools, setTools] = useState<DetectedTool[]>([])
   const detectedToolIds = useMemo(
-    () => clients.filter((c) => c.installed).map((c) => c.id as string),
-    [clients]
+    () => tools.filter((t) => t.installed).map((t) => t.id),
+    [tools]
   )
   const [detailServer, setDetailServer] = useState<MergedServerEntry | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
@@ -117,6 +119,7 @@ export default function App(): React.JSX.Element {
       setClients(fetched)
       setSelectedClientIds(fetched.filter((c) => c.installed).map((c) => c.id))
     })
+    klikApi.getTools().then(setTools)
     refreshInstalled()
   }, [loadServers, refreshInstalled])
 
@@ -299,7 +302,7 @@ export default function App(): React.JSX.Element {
 
             {section === 'skills' && (
               <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6 pt-5">
-                <SkillsView detectedToolIds={detectedToolIds} />
+                <SkillsView detectedToolIds={detectedToolIds} tools={tools} />
               </div>
             )}
 

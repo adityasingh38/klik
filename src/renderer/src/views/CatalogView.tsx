@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Search, ShieldCheck, TriangleAlert, ExternalLink } from 'lucide-react'
+import { Search, ShieldCheck, TriangleAlert, ExternalLink, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -57,6 +57,11 @@ interface CatalogViewProps {
   isLoading?: boolean
   detectedToolIds: string[]
   meta: CatalogKindMeta
+  /** Ids already installed — badged in the list, and swap the drawer action to uninstall. */
+  installedIds?: string[]
+  /** When provided the primary action is live; otherwise it renders disabled. */
+  onAction?: (item: CatalogDetailItem) => void
+  onUninstall?: (id: string) => void
 }
 
 function MetaTag({ children }: { children: React.ReactNode }): React.JSX.Element {
@@ -86,7 +91,7 @@ function GlyphTile({
 }
 
 export function CatalogView(props: CatalogViewProps): React.JSX.Element {
-  const { items, isLoading = false, detectedToolIds, meta } = props
+  const { items, isLoading = false, detectedToolIds, meta, installedIds = [], onAction, onUninstall } = props
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
   const [detail, setDetail] = useState<CatalogDetailItem | null>(null)
@@ -186,6 +191,9 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
                     />
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
+                    {installedIds.includes(item.id) && (
+                      <Badge className="bg-success text-success-foreground">Installed</Badge>
+                    )}
                     {item.verified && (
                       <Badge className="gap-1 bg-accent text-accent-foreground">
                         <ShieldCheck className="size-3" /> Verified
@@ -293,16 +301,37 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
 
             <DrawerFooter>
               <DrawerClose render={<Button variant="outline" />}>Close</DrawerClose>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <span>
-                      <Button disabled>{meta.actionLabel}</Button>
-                    </span>
-                  }
-                />
-                <TooltipContent>{meta.actionPendingReason}</TooltipContent>
-              </Tooltip>
+              {installedIds.includes(detail.id) && onUninstall ? (
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    onUninstall(detail.id)
+                    setDetailOpen(false)
+                  }}
+                >
+                  <Trash2 className="size-4" /> Uninstall
+                </Button>
+              ) : onAction ? (
+                <Button
+                  onClick={() => {
+                    onAction(detail)
+                    setDetailOpen(false)
+                  }}
+                >
+                  {meta.actionLabel}
+                </Button>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <span>
+                        <Button disabled>{meta.actionLabel}</Button>
+                      </span>
+                    }
+                  />
+                  <TooltipContent>{meta.actionPendingReason}</TooltipContent>
+                </Tooltip>
+              )}
             </DrawerFooter>
           </DrawerPopup>
         </Drawer>
