@@ -20,6 +20,9 @@ function startupChrome(): { background: string; symbol: string } {
 function createWindow(): void {
   const chrome = startupChrome()
   const win = new BrowserWindow({
+    // Packaged, the icon is baked in by electron-builder; unpackaged this is what
+    // stops the taskbar showing the default Electron icon during development.
+    icon: join(__dirname, '../../build/icon.png'),
     width: 1180,
     height: 820,
     minWidth: 880,
