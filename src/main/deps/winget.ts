@@ -1,21 +1,16 @@
-import { spawnSync } from 'node:child_process'
+import { execAsync } from '../lib/exec'
 
 export interface WingetInstallResult {
   success: boolean
   message: string
 }
 
-export function wingetInstall(packageId: string): WingetInstallResult {
-  const result = spawnSync(
-    'winget',
-    ['install', '--id', packageId, '-e', '--silent', '--accept-package-agreements', '--accept-source-agreements'],
-    { encoding: 'utf-8' }
-  )
-  if (result.error) {
-    return { success: false, message: result.error.message }
-  }
-  if (result.status !== 0) {
-    return { success: false, message: result.stderr || result.stdout || `winget exited with code ${result.status}` }
+export async function wingetInstall(packageId: string): Promise<WingetInstallResult> {
+  // A system-wide install can take minutes; blocking the main process for that
+  // long would freeze the entire interface.
+  const result = await execAsync('winget', ['install', '--id', packageId, '-e', '--silent', '--accept-package-agreements', '--accept-source-agreements'], 10 * 60 * 1000)
+  if (!result.ok) {
+    return { success: false, message: (result.stderr || result.stdout || 'winget failed').trim() }
   }
   return { success: true, message: result.stdout }
 }

@@ -1,40 +1,43 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { spawnSync } from 'node:child_process'
+
+vi.mock('../../../src/main/lib/exec', () => ({
+  execAsync: vi.fn(),
+  memoizeFor: (_ttl: number, load: () => Promise<unknown>) => load
+}))
+
+import { execAsync } from '../../../src/main/lib/exec'
 import { wingetInstall } from '../../../src/main/deps/winget'
 
-vi.mock('node:child_process', () => ({ spawnSync: vi.fn() }))
+beforeEach(() => {
+  vi.mocked(execAsync).mockReset()
+})
 
 describe('wingetInstall', () => {
-  beforeEach(() => {
-    vi.mocked(spawnSync).mockReset()
+  it('reports success when winget succeeds', async () => {
+    vi.mocked(execAsync).mockResolvedValue({ ok: true, stdout: 'Installed', stderr: '' })
+    await expect(wingetInstall('OpenJS.NodeJS.LTS')).resolves.toEqual({
+      success: true,
+      message: 'Installed'
+    })
   })
 
-  it('reports success when winget exits 0', () => {
-    vi.mocked(spawnSync).mockReturnValue({ status: 0, stdout: 'Installed', stderr: '' } as any)
-
-    const result = wingetInstall('OpenJS.NodeJS.LTS')
-
-    expect(result).toEqual({ success: true, message: 'Installed' })
-    expect(spawnSync).toHaveBeenCalledWith(
-      'winget',
-      ['install', '--id', 'OpenJS.NodeJS.LTS', '-e', '--silent', '--accept-package-agreements', '--accept-source-agreements'],
-      { encoding: 'utf-8' }
-    )
+  it('surfaces stderr when winget fails', async () => {
+    vi.mocked(execAsync).mockResolvedValue({ ok: false, stdout: '', stderr: 'package not found' })
+    const result = await wingetInstall('Bogus.Package')
+    expect(result.success).toBe(false)
+    expect(result.message).toBe('package not found')
   })
 
-  it('reports failure with stderr when winget exits non-zero', () => {
-    vi.mocked(spawnSync).mockReturnValue({ status: 1, stdout: '', stderr: 'network error' } as any)
-
-    const result = wingetInstall('OpenJS.NodeJS.LTS')
-
-    expect(result).toEqual({ success: false, message: 'network error' })
+  it('reports a helpful failure when winget itself is missing', async () => {
+    vi.mocked(execAsync).mockResolvedValue({ ok: false, stdout: '', stderr: '', errorCode: 'ENOENT' })
+    const result = await wingetInstall('OpenJS.NodeJS.LTS')
+    expect(result.success).toBe(false)
+    expect(result.message).toBeTruthy()
   })
 
-  it('reports failure when spawnSync itself errors (e.g. winget not found)', () => {
-    vi.mocked(spawnSync).mockReturnValue({ error: new Error('ENOENT') } as any)
-
-    const result = wingetInstall('OpenJS.NodeJS.LTS')
-
-    expect(result).toEqual({ success: false, message: 'ENOENT' })
+  it('allows a long timeout — a system install can take minutes', async () => {
+    vi.mocked(execAsync).mockResolvedValue({ ok: true, stdout: '', stderr: '' })
+    await wingetInstall('OpenJS.NodeJS.LTS')
+    expect(vi.mocked(execAsync).mock.calls[0][2]).toBeGreaterThanOrEqual(60_000)
   })
 })

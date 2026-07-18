@@ -24,14 +24,21 @@ export function commandLineFor(command?: string, args?: string[]): string | unde
  * performing any of it. The install preview renders this so the user approves a
  * concrete action rather than a black box.
  */
-export function buildInstallPreview(request: PreflightRequest, deps: PreflightDeps): InstallPreview {
+export async function buildInstallPreview(
+  request: PreflightRequest,
+  deps: PreflightDeps
+): Promise<InstallPreview> {
   const { server, targetClients } = request
 
-  const runtimes: RuntimeStatus[] = server.requiredRuntime.map((runtime) => ({
-    runtime,
-    available: isRuntimeAvailable(runtime),
-    canAutoInstall: wingetPackageId(runtime) !== null
-  }))
+  // Probed in parallel — a server needing three runtimes shouldn't wait for three
+  // sequential PATH lookups before its preview can render.
+  const runtimes: RuntimeStatus[] = await Promise.all(
+    server.requiredRuntime.map(async (runtime) => ({
+      runtime,
+      available: await isRuntimeAvailable(runtime),
+      canAutoInstall: wingetPackageId(runtime) !== null
+    }))
+  )
 
   const targets: InstallTargetPreview[] = targetClients.map((clientId) => {
     const adapter = deps.adaptersById[clientId]

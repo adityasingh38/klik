@@ -23,6 +23,9 @@ import { SPRING, staggerDelay } from '@/lib/motion'
 import { motion, useReducedMotion } from 'motion/react'
 import { cn } from '@/lib/utils'
 
+/** How many cards mount at once before "Show more". */
+const PAGE_SIZE = 48
+
 /** A fully-normalized catalog item — everything the shared list and drawer need. */
 export interface CatalogDetailItem {
   id: string
@@ -136,6 +139,14 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
     })
   }, [items, search, category])
 
+  /** Multi-source catalogues run to hundreds of entries; only a window is mounted. */
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+  }, [search, category])
+
+
   // Arriving from the command palette opens that item straight away.
   useEffect(() => {
     if (!focusItemId) return
@@ -239,7 +250,7 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
                 <Skeleton className="h-3 w-4/5" />
               </div>
             ))
-          : filtered.map((item, index) => {
+          : visible.map((item, index) => {
               const color = itemColor(item.id, item.title)
               const isInstalled = installedIds.includes(item.id)
               const card = (
@@ -331,7 +342,20 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
                 </p>
               </>
             )}
-          </div>
+    
+        {visible.length < filtered.length && (
+          <button
+            type="button"
+            onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+            className="focus-ring surface-raised col-span-full mx-auto flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-elevated"
+          >
+            Show more
+            <span className="text-muted-foreground">
+              {visible.length} of {filtered.length}
+            </span>
+          </button>
+        )}
+      </div>
         )}
       </div>
 

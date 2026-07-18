@@ -61,9 +61,9 @@ describe('installServer', () => {
     // Reset call history too — assertions like "winget was never called" are
     // meaningless if counts leak in from the previous test.
     vi.clearAllMocks()
-    vi.mocked(isRuntimeAvailable).mockReturnValue(true)
+    vi.mocked(isRuntimeAvailable).mockResolvedValue(true)
     vi.mocked(wingetPackageId).mockReturnValue('Some.Package')
-    vi.mocked(wingetInstall).mockReturnValue({ success: true, message: '' })
+    vi.mocked(wingetInstall).mockResolvedValue({ success: true, message: '' })
   })
 
   afterEach(() => {
@@ -87,7 +87,7 @@ describe('installServer', () => {
   })
 
   it('installs a missing runtime via winget when the user consented', async () => {
-    vi.mocked(isRuntimeAvailable).mockReturnValue(false)
+    vi.mocked(isRuntimeAvailable).mockResolvedValue(false)
     const request: InstallRequest = {
       server: baseServer,
       targetClients: ['claude-desktop'],
@@ -110,7 +110,7 @@ describe('installServer', () => {
   })
 
   it('never installs a runtime system-wide without consent, warning instead', async () => {
-    vi.mocked(isRuntimeAvailable).mockReturnValue(false)
+    vi.mocked(isRuntimeAvailable).mockResolvedValue(false)
     const request: InstallRequest = {
       server: baseServer,
       targetClients: ['claude-desktop'],
@@ -234,8 +234,8 @@ describe('installServer', () => {
   })
 
   it('aborts with a per-client error and writes nothing when winget install fails', async () => {
-    vi.mocked(isRuntimeAvailable).mockReturnValue(false)
-    vi.mocked(wingetInstall).mockReturnValue({ success: false, message: 'network error' })
+    vi.mocked(isRuntimeAvailable).mockResolvedValue(false)
+    vi.mocked(wingetInstall).mockResolvedValue({ success: false, message: 'network error' })
     const request: InstallRequest = {
       server: baseServer,
       targetClients: ['claude-desktop', 'cursor'],
@@ -270,7 +270,8 @@ describe('installServer', () => {
   })
 
   it('warns (but still succeeds) when a runtime has no winget package id (e.g. docker)', async () => {
-    vi.mocked(isRuntimeAvailable).mockImplementation((runtime: string) => runtime !== 'docker')
+    vi.mocked(isRuntimeAvailable).mockImplementation(async (runtime: string) => runtime !== 'docker')
+    // wingetPackageId is a plain lookup — it never touched the process table.
     vi.mocked(wingetPackageId).mockImplementation((runtime: string) => (runtime === 'docker' ? null : 'Some.Package'))
     const dockerServer: MergedServerEntry = {
       ...baseServer,

@@ -56,7 +56,7 @@ export async function installServer(request: InstallRequest, deps: InstallerDeps
   const unmetRuntimeWarnings: string[] = []
 
   for (const runtime of request.server.requiredRuntime) {
-    if (isRuntimeAvailable(runtime)) continue
+    if (await isRuntimeAvailable(runtime)) continue
     const packageId = wingetPackageId(runtime)
     // Installing a runtime is a system-wide change, so it only happens when the user
     // explicitly consented in the install preview. Without consent, the server is still
@@ -65,7 +65,7 @@ export async function installServer(request: InstallRequest, deps: InstallerDeps
       unmetRuntimeWarnings.push(runtime)
       continue
     }
-    const install = wingetInstall(packageId)
+    const install = await wingetInstall(packageId)
     if (!install.success) {
       for (const clientId of request.targetClients) {
         results.push({
