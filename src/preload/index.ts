@@ -20,6 +20,7 @@ import type {
   SkillInstallStepResult,
   SkillPreflightRequest
 } from '../shared/catalog'
+import type { Preferences } from '../shared/prefs'
 
 interface InstalledPluginInfo {
   id: string
@@ -56,7 +57,11 @@ const klikApi = {
   installPlugin: (request: PluginInstallRequest): Promise<PluginInstallStepResult[]> =>
     ipcRenderer.invoke('klik:installPlugin', request),
   uninstallPlugin: (pluginId: string): Promise<PluginInstallStepResult[]> =>
-    ipcRenderer.invoke('klik:uninstallPlugin', pluginId)
+    ipcRenderer.invoke('klik:uninstallPlugin', pluginId),
+
+  getPrefs: (): Promise<Preferences> => ipcRenderer.invoke('klik:getPrefs'),
+  setPrefs: (next: Partial<Preferences>): Promise<Preferences> =>
+    ipcRenderer.invoke('klik:setPrefs', next)
 }
 
 export type KlikApi = typeof klikApi

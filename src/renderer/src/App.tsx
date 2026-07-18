@@ -28,6 +28,8 @@ import { InstallProgressView } from './components/InstallProgressView'
 import { SecretPromptDialog } from './components/SecretPromptDialog'
 import { klikApi } from './api/klikApi'
 import { MOD_KEY } from './lib/platform'
+import { ThemeProvider } from './lib/theme'
+import { ThemeToggle } from './components/app/ThemeToggle'
 import type {
   ClientId,
   ClientInfo,
@@ -291,6 +293,7 @@ export default function App(): React.JSX.Element {
   const meta = SECTION_TITLES[section]
 
   return (
+    <ThemeProvider>
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar
@@ -330,6 +333,7 @@ export default function App(): React.JSX.Element {
                 cached
               </span>
             )}
+            <div className="ml-auto flex items-center gap-0.5">
             {/* Deliberately an icon button, not a bordered pill: a search-shaped box
                 sitting directly above each catalog's filter box read as two search
                 fields doing the same thing. */}
@@ -339,7 +343,7 @@ export default function App(): React.JSX.Element {
                   <button
                     onClick={() => setPaletteOpen(true)}
                     aria-label="Search everything"
-                    className="focus-ring no-drag ml-auto flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
+                    className="focus-ring no-drag flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
                   >
                     <Search className="size-4" />
                   </button>
@@ -349,6 +353,8 @@ export default function App(): React.JSX.Element {
                 Search everything · <Kbd>{MOD_KEY}</Kbd> <Kbd>K</Kbd>
               </TooltipContent>
             </Tooltip>
+            <ThemeToggle />
+            </div>
           </header>
 
           {/* Content */}
@@ -476,5 +482,6 @@ export default function App(): React.JSX.Element {
         </Dialog>
       </SidebarProvider>
     </TooltipProvider>
+    </ThemeProvider>
   )
 }

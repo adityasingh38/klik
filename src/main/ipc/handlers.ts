@@ -19,7 +19,9 @@ import {
   uninstallPluginEntry
 } from '../plugins/installer'
 import { listInstalledPlugins } from '../plugins/cli'
+import { readPreferences, writePreferences } from '../prefs/store'
 import type { ClientId, GetServersResult, InstallRequest, PreflightRequest } from '../../shared/types'
+import type { Preferences } from '../../shared/prefs'
 import type {
   PluginInstallRequest,
   PluginPreflightRequest,
@@ -120,4 +122,12 @@ export function registerIpcHandlers(): void {
   )
 
   ipcMain.handle('klik:uninstallPlugin', (_event, pluginId: string) => uninstallPluginEntry(pluginId))
+
+  // --- Preferences ----------------------------------------------------------
+
+  ipcMain.handle('klik:getPrefs', () => readPreferences(app.getPath('userData')))
+
+  ipcMain.handle('klik:setPrefs', (_event, next: Partial<Preferences>) =>
+    writePreferences(app.getPath('userData'), next)
+  )
 }
