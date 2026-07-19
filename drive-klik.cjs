@@ -24,6 +24,17 @@ function scratchProfile(seed) {
 
 async function shoot(win, name) {
   fs.mkdirSync(OUT, { recursive: true })
+  // Logos resolve over the network, and a card whose first candidate 404s needs a
+  // second round trip. Shooting before they settle produced empty tiles that looked
+  // like a rendering bug and cost an investigation — wait for the images instead.
+  await win
+    .waitForFunction(
+      () => [...document.images].every((img) => img.complete),
+      { timeout: 8000 }
+    )
+    .catch(() => {
+      console.log('  (logos still loading at cutoff)')
+    })
   await win.screenshot({ path: path.join(OUT, `${name}.png`) })
   console.log('SHOT', name)
 }
