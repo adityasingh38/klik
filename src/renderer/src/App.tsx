@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Search } from 'lucide-react'
-import { DotPattern } from '@/components/ui/dot-pattern'
-import { Confetti, type ConfettiRef } from '@/components/ui/confetti'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Kbd } from '@/components/ui/kbd'
@@ -16,7 +14,7 @@ import { AppSidebar, type AppSection } from './components/app/AppSidebar'
 import { ServerDetailDrawer } from './components/app/ServerDetailDrawer'
 import { CommandPalette, type PaletteItem } from './components/app/CommandPalette'
 import { InstallPreviewDialog } from './components/app/InstallPreviewDialog'
-import { DiscoverView } from './views/DiscoverView'
+import { DiscoverView, FEATURED_IDS } from './views/DiscoverView'
 import { SkillsView } from './views/SkillsView'
 import { PluginsView } from './views/PluginsView'
 import { InstalledView } from './views/InstalledView'
@@ -28,6 +26,9 @@ import { InstallProgressView } from './components/InstallProgressView'
 import { SecretPromptDialog } from './components/SecretPromptDialog'
 import { klikApi } from './api/klikApi'
 import { MOD_KEY } from './lib/platform'
+import { ThemeProvider, useTheme } from './lib/theme'
+import { ThemeToggle } from './components/app/ThemeToggle'
+import { FirstRun } from './components/app/FirstRun'
 import type {
   ClientId,
   ClientInfo,
@@ -36,13 +37,21 @@ import type {
   InstallStepResult,
   MergedServerEntry
 } from '../../shared/types'
-import type { DetectedTool } from '../../shared/catalog'
+import type { DetectedTool, SkillEntry, InstalledSkillRecord } from '../../shared/catalog'
+
+/** Mirrors the shape Claude Code's CLI reports for an installed plugin. */
+interface InstalledPluginRow {
+  id: string
+  version: string
+  enabled: boolean
+  installPath: string
+}
 
 const SECTION_TITLES: Record<AppSection, { title: string; subtitle: string }> = {
   mcp: { title: 'MCP Servers', subtitle: 'Browse and install MCP servers' },
   skills: { title: 'Skills', subtitle: 'On-demand capabilities for your AI tools' },
   plugins: { title: 'Plugins', subtitle: 'Marketplace bundles: commands, agents, and more' },
-  installed: { title: 'Installed', subtitle: 'Servers running in your tools' },
+  installed: { title: 'Installed', subtitle: 'What your tools currently have, in one place' },
   tools: { title: 'Tools', subtitle: 'Detected AI tools and install targets' },
   settings: { title: 'Settings', subtitle: 'Registry, appearance, and about' }
 }
@@ -50,10 +59,20 @@ const SECTION_TITLES: Record<AppSection, { title: string; subtitle: string }> = 
 type InstallPhase = 'idle' | 'preview' | 'secrets' | 'progress'
 
 export default function App(): React.JSX.Element {
+  return (
+    <ThemeProvider>
+      <AppShell />
+    </ThemeProvider>
+  )
+}
+
+function AppShell(): React.JSX.Element {
+  const { onboarded, prefsLoaded, setOnboarded } = useTheme()
   const [servers, setServers] = useState<MergedServerEntry[]>([])
   const [isLoadingServers, setIsLoadingServers] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [fromCache, setFromCache] = useState(false)
+  const [catalogueTotal, setCatalogueTotal] = useState(0)
   const [clients, setClients] = useState<ClientInfo[]>([])
   const [installedRecords, setInstalledRecords] = useState<InstalledServerRecord[]>([])
   const [selectedServerIds, setSelectedServerIds] = useState<string[]>([])
@@ -63,8 +82,10 @@ export default function App(): React.JSX.Element {
   const [tools, setTools] = useState<DetectedTool[]>([])
   // Mirrored here purely so the palette can badge results accurately; each catalog
   // still owns its own copy for its list.
-  const [installedSkillIds, setInstalledSkillIds] = useState<string[]>([])
-  const [installedPluginIds, setInstalledPluginIds] = useState<string[]>([])
+  const [installedSkills, setInstalledSkills] = useState<InstalledSkillRecord[]>([])
+  const [installedPlugins, setInstalledPlugins] = useState<InstalledPluginRow[]>([])
+  /** The live skill catalogue. Starts as the bundled copy, swaps when the fetch lands. */
+  const [skills, setSkills] = useState<SkillEntry[]>(SKILLS_CATALOG)
   const detectedToolIds = useMemo(
     () => tools.filter((t) => t.installed).map((t) => t.id),
     [tools]
@@ -86,33 +107,25 @@ export default function App(): React.JSX.Element {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const [allowRuntimeInstall, setAllowRuntimeInstall] = useState(false)
 
-  const confettiRef = useRef<ConfettiRef>(null)
-  const hasFiredConfettiRef = useRef(false)
-
   const installedServerIds = useMemo(() => installedRecords.map((r) => r.serverId), [installedRecords])
-
-  const installSucceeded =
-    results.length > 0 && !isInstalling && results.every((r) => r.status === 'done')
-
-  useEffect(() => {
-    if (installSucceeded && !hasFiredConfettiRef.current) {
-      hasFiredConfettiRef.current = true
-      confettiRef.current?.fire({ particleCount: 80, spread: 70, colors: ['#e0873f', '#eeeae2', '#2c2521'] })
-    }
-    if (!installSucceeded) hasFiredConfettiRef.current = false
-  }, [installSucceeded])
 
   const refreshInstalled = useCallback((): void => {
     klikApi.getInstalled().then(setInstalledRecords)
   }, [])
 
+  /**
+   * Only the wall's nine and the totals cross the process boundary on launch. The
+   * full catalogue — ~15,700 entries, 9.5 MB on disk — stays in the main process and
+   * is queried a page at a time.
+   */
   const loadServers = useCallback((refresh = false): void => {
     if (refresh) setIsRefreshing(true)
     klikApi
-      .getServers()
-      .then(({ servers: fetched, fromCache: cached }) => {
-        setServers(fetched)
-        setFromCache(cached)
+      .getFeatured(FEATURED_IDS)
+      .then((page) => {
+        setServers(page.servers)
+        setCatalogueTotal(page.catalogueTotal)
+        setFromCache(true)
       })
       .finally(() => {
         setIsLoadingServers(false)
@@ -127,8 +140,14 @@ export default function App(): React.JSX.Element {
       setSelectedClientIds(fetched.filter((c) => c.installed).map((c) => c.id))
     })
     klikApi.getTools().then(setTools)
-    klikApi.getInstalledSkills().then((r) => setInstalledSkillIds(r.map((x) => x.skillId)))
-    klikApi.getInstalledPlugins().then((r) => setInstalledPluginIds(r.map((x) => x.id))).catch(() => {})
+    klikApi
+      .getSkills(SKILLS_CATALOG)
+      .then((live) => {
+        if (live.length > 0) setSkills(live)
+      })
+      .catch(() => {})
+    klikApi.getInstalledSkills().then(setInstalledSkills)
+    klikApi.getInstalledPlugins().then(setInstalledPlugins).catch(() => {})
     refreshInstalled()
   }, [loadServers, refreshInstalled])
 
@@ -157,13 +176,13 @@ export default function App(): React.JSX.Element {
         installed: installedServerIds.includes(s.id),
         server: s
       })),
-      ...SKILLS_CATALOG.map((s) => ({
+      ...skills.map((s) => ({
         kind: 'skill' as const,
         id: s.id,
         title: s.title,
         description: s.description,
         category: s.category,
-        installed: installedSkillIds.includes(s.id)
+        installed: installedSkills.some((r) => r.skillId === s.id)
       })),
       ...PLUGINS_CATALOG.map((p) => ({
         kind: 'plugin' as const,
@@ -171,10 +190,10 @@ export default function App(): React.JSX.Element {
         title: p.title,
         description: p.description,
         category: p.category,
-        installed: installedPluginIds.includes(p.id)
+        installed: installedPlugins.some((r) => r.id === p.id)
       }))
     ]
-  }, [servers, installedServerIds, installedSkillIds, installedPluginIds])
+  }, [servers, skills, installedServerIds, installedSkills, installedPlugins])
 
   function handlePaletteSelect(item: PaletteItem): void {
     if (item.kind === 'mcp' && item.server) {
@@ -290,23 +309,38 @@ export default function App(): React.JSX.Element {
 
   const meta = SECTION_TITLES[section]
 
+  // First run waits for preferences so it can't flash for someone who has already
+  // been through it.
+  if (prefsLoaded && !onboarded) {
+    return (
+      <TooltipProvider>
+        <FirstRun
+          tools={tools}
+          onFinish={(recommended) => {
+            setOnboarded(true)
+            if (recommended.length > 0) {
+              setSelectedServerIds(recommended)
+            }
+          }}
+        />
+      </TooltipProvider>
+    )
+  }
+
   return (
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar
           active={section}
           onSelect={setSection}
-          serverCount={servers.length}
-          skillCount={SKILLS_CATALOG.length}
+          serverCount={catalogueTotal}
+          skillCount={skills.length}
           pluginCount={PLUGINS_CATALOG.length}
-          installedCount={installedRecords.length}
+          installedCount={installedRecords.length + installedSkills.length + installedPlugins.length}
           toolCount={clients.filter((c) => c.installed).length}
         />
 
         <SidebarInset className="relative overflow-hidden">
-          <DotPattern className="text-border/20" />
-          <Confetti ref={confettiRef} manualstart className="pointer-events-none fixed inset-0 z-50 size-full" />
-
           {/* Titlebar / header — draggable, leaves room for native window controls (right). */}
           <header className="app-drag relative z-20 flex h-10 shrink-0 items-center gap-3 border-b border-border/60 px-3 pr-36">
             <Tooltip>
@@ -330,6 +364,7 @@ export default function App(): React.JSX.Element {
                 cached
               </span>
             )}
+            <div className="ml-auto flex items-center gap-0.5">
             {/* Deliberately an icon button, not a bordered pill: a search-shaped box
                 sitting directly above each catalog's filter box read as two search
                 fields doing the same thing. */}
@@ -339,7 +374,7 @@ export default function App(): React.JSX.Element {
                   <button
                     onClick={() => setPaletteOpen(true)}
                     aria-label="Search everything"
-                    className="focus-ring no-drag ml-auto flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
+                    className="focus-ring no-drag flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
                   >
                     <Search className="size-4" />
                   </button>
@@ -349,14 +384,17 @@ export default function App(): React.JSX.Element {
                 Search everything · <Kbd>{MOD_KEY}</Kbd> <Kbd>K</Kbd>
               </TooltipContent>
             </Tooltip>
+            <ThemeToggle />
+            </div>
           </header>
 
           {/* Content */}
           <div className="relative z-10 flex min-h-0 flex-1 flex-col">
             {section === 'mcp' && (
-              <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6 pt-5">
+              <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-8 pt-6">
                 <DiscoverView
                   servers={servers}
+                  catalogueTotal={catalogueTotal}
                   isLoadingServers={isLoadingServers}
                   installedServerIds={installedServerIds}
                   selectedServerIds={selectedServerIds}
@@ -372,10 +410,11 @@ export default function App(): React.JSX.Element {
             )}
 
             {section === 'skills' && (
-              <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6 pt-5">
+              <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-8 pt-6">
                 <SkillsView
                   detectedToolIds={detectedToolIds}
                   tools={tools}
+                  catalog={skills}
                   focusItemId={focusItem?.kind === 'skill' ? focusItem.id : null}
                   onFocusHandled={() => setFocusItem(null)}
                 />
@@ -383,7 +422,7 @@ export default function App(): React.JSX.Element {
             )}
 
             {section === 'plugins' && (
-              <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6 pt-5">
+              <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-8 pt-6">
                 <PluginsView
                   detectedToolIds={detectedToolIds}
                   focusItemId={focusItem?.kind === 'plugin' ? focusItem.id : null}
@@ -393,13 +432,28 @@ export default function App(): React.JSX.Element {
             )}
 
             {(section === 'installed' || section === 'tools' || section === 'settings') && (
-              <div className="h-full overflow-y-auto px-6 py-6">
-                <div className="mx-auto w-full max-w-3xl">
+              <div className="h-full overflow-y-auto px-8 py-7">
+                <div className="mx-auto w-full max-w-5xl">
                   {section === 'installed' && (
                     <InstalledView
                       servers={servers}
                       installed={installedRecords}
                       clients={clients}
+                      skills={skills}
+                      installedSkills={installedSkills}
+                      plugins={PLUGINS_CATALOG}
+                      installedPlugins={installedPlugins}
+                      onUninstallSkill={(id) => {
+                        void klikApi.uninstallSkill(id).then(() =>
+                          klikApi.getInstalledSkills().then(setInstalledSkills)
+                        )
+                      }}
+                      onUninstallPlugin={(id) => {
+                        void klikApi
+                          .uninstallPlugin(id)
+                          .then(() => klikApi.getInstalledPlugins().then(setInstalledPlugins))
+                          .catch(() => {})
+                      }}
                       onUninstall={handleUninstall}
                       onOpenServer={openServer}
                       onGoDiscover={() => setSection('mcp')}
@@ -418,7 +472,7 @@ export default function App(): React.JSX.Element {
                   )}
                   {section === 'settings' && (
                     <SettingsView
-                      serverCount={servers.length}
+                      serverCount={catalogueTotal}
                       fromCache={fromCache}
                       isRefreshing={isRefreshing}
                       onRefresh={() => loadServers(true)}
@@ -466,10 +520,10 @@ export default function App(): React.JSX.Element {
         )}
 
         <Dialog open={phase === 'progress'} onOpenChange={(open: boolean) => { if (!open && !isInstalling) finishInstall() }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="font-heading">Installing servers</DialogTitle>
-              <DialogDescription>Writing MCP configuration into your selected clients.</DialogDescription>
+          <DialogContent className="max-w-sm">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Installing</DialogTitle>
+              <DialogDescription>Writing configuration into your selected apps.</DialogDescription>
             </DialogHeader>
             <InstallProgressView results={results} isInstalling={isInstalling} onDone={finishInstall} />
           </DialogContent>

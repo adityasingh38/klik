@@ -1,17 +1,21 @@
-import { spawnSync } from 'node:child_process'
+import { execAsync, memoizeFor } from '../lib/exec'
 
 /**
  * Klik drives plugin management through Claude Code's own CLI rather than editing
  * ~/.claude by hand. Replicating that internal state (marketplace registry, plugin
  * cache, enable flags across two files) would drift the moment the format changes,
- * and a bad write breaks the user's Claude Code install. Delegating keeps Claude
- * Code the single source of truth — Klik just asks for things and reports back.
+ * and a bad write breaks the user's Claude Code install. Delegating keeps Claude Code
+ * the single source of truth — Klik just asks for things and reports back.
  *
- * Every call is spawned without a shell, so arguments can never be interpreted as
- * shell syntax; ids are additionally validated before they are passed.
+ * Every call is async and shell-free. Synchronous spawns froze the whole interface,
+ * because the main process serves all IPC on one thread; and read-only answers are
+ * memoized, because launching the CLI on every view mount is what made switching to
+ * the Plugins tab feel broken.
  */
 const CLI = 'claude'
 const TIMEOUT_MS = 120000
+/** Long enough that repeated navigation is free, short enough to notice a change. */
+const READ_TTL_MS = 15000
 
 export interface CliResult {
   success: boolean
@@ -32,31 +36,19 @@ export function isValidMarketplaceSource(source: string): boolean {
   )
 }
 
-function run(args: string[]): CliResult {
-  const result = spawnSync(CLI, args, { encoding: 'utf-8', timeout: TIMEOUT_MS, shell: false })
-  if (result.error) {
-    const code = (result.error as NodeJS.ErrnoException).code
+async function run(args: string[]): Promise<CliResult> {
+  const result = await execAsync(CLI, args, TIMEOUT_MS)
+  if (!result.ok) {
     return {
       success: false,
-      stdout: '',
+      stdout: result.stdout,
       message:
-        code === 'ENOENT'
+        result.errorCode === 'ENOENT'
           ? 'The Claude Code CLI was not found on PATH — install Claude Code to manage plugins.'
-          : result.error.message
+          : (result.stderr || result.stdout || 'claude exited with an error').trim()
     }
   }
-  if (result.status !== 0) {
-    return {
-      success: false,
-      stdout: result.stdout ?? '',
-      message: (result.stderr || result.stdout || `claude exited with code ${result.status}`).trim()
-    }
-  }
-  return { success: true, stdout: result.stdout ?? '', message: (result.stdout ?? '').trim() }
-}
-
-export function isCliAvailable(): boolean {
-  return run(['--version']).success
+  return { success: true, stdout: result.stdout, message: result.stdout.trim() }
 }
 
 export interface InstalledPluginInfo {
@@ -66,9 +58,11 @@ export interface InstalledPluginInfo {
   installPath: string
 }
 
+export const isCliAvailable = memoizeFor(READ_TTL_MS, async () => (await run(['--version'])).success)
+
 /** The real installed set, straight from Claude Code — not a Klik-side guess. */
-export function listInstalledPlugins(): InstalledPluginInfo[] {
-  const result = run(['plugin', 'list', '--json'])
+export const listInstalledPlugins = memoizeFor(READ_TTL_MS, async (): Promise<InstalledPluginInfo[]> => {
+  const result = await run(['plugin', 'list', '--json'])
   if (!result.success) return []
   try {
     const parsed = JSON.parse(result.stdout) as InstalledPluginInfo[]
@@ -76,10 +70,10 @@ export function listInstalledPlugins(): InstalledPluginInfo[] {
   } catch {
     return []
   }
-}
+})
 
-export function listMarketplaceNames(): string[] {
-  const result = run(['plugin', 'marketplace', 'list', '--json'])
+export const listMarketplaceNames = memoizeFor(READ_TTL_MS, async (): Promise<string[]> => {
+  const result = await run(['plugin', 'marketplace', 'list', '--json'])
   if (!result.success) return []
   try {
     const parsed = JSON.parse(result.stdout) as Array<{ name?: string; id?: string }>
@@ -88,23 +82,23 @@ export function listMarketplaceNames(): string[] {
   } catch {
     return []
   }
-}
+})
 
-export function addMarketplace(source: string): CliResult {
+export async function addMarketplace(source: string): Promise<CliResult> {
   if (!isValidMarketplaceSource(source)) {
     return { success: false, stdout: '', message: `Refusing to add an unrecognized marketplace source: ${source}` }
   }
   return run(['plugin', 'marketplace', 'add', source])
 }
 
-export function installPlugin(id: string): CliResult {
+export async function installPlugin(id: string): Promise<CliResult> {
   if (!isValidPluginId(id)) {
     return { success: false, stdout: '', message: `Refusing to install an invalid plugin id: ${id}` }
   }
   return run(['plugin', 'install', id, '--scope', 'user'])
 }
 
-export function uninstallPlugin(id: string): CliResult {
+export async function uninstallPlugin(id: string): Promise<CliResult> {
   if (!isValidPluginId(id)) {
     return { success: false, stdout: '', message: `Refusing to uninstall an invalid plugin id: ${id}` }
   }

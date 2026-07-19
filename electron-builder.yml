@@ -8,12 +8,14 @@ extraResources:
   - from: curation
     to: curation
 win:
+  icon: build/icon.png
   target: nsis
   artifactName: ${productName}-Setup-${version}.exe
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
 mac:
+  icon: build/icon.png
   target:
     - target: dmg
       # One universal disk image runs on both Apple Silicon and Intel Macs.

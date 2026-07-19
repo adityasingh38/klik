@@ -153,7 +153,7 @@ export function CommandPalette(props: CommandPaletteProps): React.JSX.Element | 
                   return (
                     <React.Fragment key={`${item.kind}:${item.id}`}>
                       {startsGroup && (
-                        <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <div className="px-3 pb-1 pt-2 text-xs font-medium text-muted-foreground">
                           {KIND_META[item.kind].label}
                         </div>
                       )}

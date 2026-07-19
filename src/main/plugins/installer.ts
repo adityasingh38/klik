@@ -52,15 +52,17 @@ export function marketplaceSourceOf(plugin: PluginEntry): string {
  * marketplace has to be trusted first, and whether it's already present — without
  * running anything.
  */
-export function buildPluginInstallPreview(
+export async function buildPluginInstallPreview(
   request: PluginPreflightRequest,
   cli: PluginCli = defaultPluginCli
-): PluginInstallPreview {
+): Promise<PluginInstallPreview> {
   const { plugin } = request
-  const cliAvailable = cli.isCliAvailable()
+  const cliAvailable = await cli.isCliAvailable()
 
-  const installed = cliAvailable ? cli.listInstalledPlugins() : []
-  const marketplaces = cliAvailable ? cli.listMarketplaceNames() : []
+  // Both are memoized reads, so mounting the view repeatedly costs nothing.
+  const [installed, marketplaces] = cliAvailable
+    ? await Promise.all([cli.listInstalledPlugins(), cli.listMarketplaceNames()])
+    : [[], []]
 
   const alreadyInstalled = installed.some((p) => p.id === plugin.id)
   const marketplaceAlreadyKnown = marketplaces.includes(plugin.marketplace)
@@ -93,14 +95,14 @@ export function buildPluginInstallPreview(
   }
 }
 
-export function installPluginEntry(
+export async function installPluginEntry(
   request: PluginInstallRequest,
   cli: PluginCli = defaultPluginCli
-): PluginInstallStepResult[] {
+): Promise<PluginInstallStepResult[]> {
   const { plugin, allowMarketplaceAdd } = request
   const results: PluginInstallStepResult[] = []
 
-  if (!cli.isCliAvailable()) {
+  if (!(await cli.isCliAvailable())) {
     return [
       {
         pluginId: plugin.id,
@@ -112,7 +114,7 @@ export function installPluginEntry(
   }
 
   const source = marketplaceSourceOf(plugin)
-  const known = cli.listMarketplaceNames().includes(plugin.marketplace)
+  const known = (await cli.listMarketplaceNames()).includes(plugin.marketplace)
 
   if (!known) {
     // Trusting a new marketplace is its own decision, never implied by "install".
@@ -126,7 +128,7 @@ export function installPluginEntry(
         }
       ]
     }
-    const added = cli.addMarketplace(source)
+    const added = await cli.addMarketplace(source)
     results.push({
       pluginId: plugin.id,
       step: `claude plugin marketplace add ${source}`,
@@ -136,7 +138,7 @@ export function installPluginEntry(
     if (!added.success) return results
   }
 
-  const installed = cli.installPlugin(plugin.id)
+  const installed = await cli.installPlugin(plugin.id)
   results.push({
     pluginId: plugin.id,
     step: `claude plugin install ${plugin.id} --scope user`,
@@ -147,11 +149,11 @@ export function installPluginEntry(
   return results
 }
 
-export function uninstallPluginEntry(
+export async function uninstallPluginEntry(
   pluginId: string,
   cli: PluginCli = defaultPluginCli
-): PluginInstallStepResult[] {
-  const result = cli.uninstallPlugin(pluginId)
+): Promise<PluginInstallStepResult[]> {
+  const result = await cli.uninstallPlugin(pluginId)
   return [
     {
       pluginId,

@@ -6,8 +6,12 @@ import type { MergedServerEntry } from '../../../shared/types'
  * Only ~10% of registry servers declare an `icons` entry, so a logo is assembled from
  * a candidate chain, best source first, each tried in order until one loads:
  *   1. the publisher's declared icon
- *   2. the GitHub owner's avatar (65% of servers carry a repository url)
- *   3. the website's own favicon (71% carry a websiteUrl)
+ *   2. the website's own favicon (71% carry a websiteUrl)
+ *   3. the GitHub owner's avatar (65% carry a repository url)
+ *
+ * The favicon outranks the avatar because a GitHub account may belong to a person, and
+ * a maintainer's headshot is not the project's logo — the Figma server, published by an
+ * individual, wore its author's face on a card titled with a company name.
  * Anything that 404s/blocks falls through to a copper monogram tile, so every row
  * always renders something deliberate rather than a broken-image glyph.
  *
@@ -31,6 +35,8 @@ function faviconFor(websiteUrl?: string): string | null {
   try {
     const url = new URL(websiteUrl)
     if (url.protocol !== 'https:') return null
+    // A website that is really just the repo would only yield GitHub's own logo.
+    if (url.hostname.endsWith('github.com')) return null
     return `${url.origin}/favicon.ico`
   } catch {
     return null
@@ -38,7 +44,7 @@ function faviconFor(websiteUrl?: string): string | null {
 }
 
 export function logoCandidates(server: MergedServerEntry): string[] {
-  return [server.iconUrl, githubAvatar(server.repositoryUrl), faviconFor(server.websiteUrl)].filter(
+  return [server.iconUrl, faviconFor(server.websiteUrl), githubAvatar(server.repositoryUrl)].filter(
     (src): src is string => Boolean(src)
   )
 }

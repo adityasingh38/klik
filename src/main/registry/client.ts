@@ -5,6 +5,12 @@ import type { RegistryEnvVar, RegistryServerEntry, RuntimeKind } from '../../sha
 const REGISTRY_BASE_URL = 'https://registry.modelcontextprotocol.io/v0/servers'
 const PAGE_LIMIT = 100
 const MAX_PAGES = 500
+/**
+ * A single page must not be able to stall the catalogue indefinitely. Without this a
+ * hung request leaves a brand-new user looking at skeletons forever, because there's
+ * no cache to fall back to on a first launch.
+ */
+const PAGE_TIMEOUT_MS = 8000
 
 interface RawPackage {
   registryType: string
@@ -128,6 +134,22 @@ export function normalizeRawServer(raw: RawServer): RegistryServerEntry | null {
   return null
 }
 
+async function fetchPage(cursor?: string): Promise<RawResponse> {
+  const url = new URL(REGISTRY_BASE_URL)
+  url.searchParams.set('limit', String(PAGE_LIMIT))
+  if (cursor) url.searchParams.set('cursor', cursor)
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), PAGE_TIMEOUT_MS)
+  try {
+    const response = await fetch(url.toString(), { signal: controller.signal })
+    if (!response.ok) throw new Error(`registry fetch failed: ${response.status}`)
+    return (await response.json()) as RawResponse
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 async function fetchAllPages(): Promise<RawEntry[]> {
   const all: RawEntry[] = []
   let cursor: string | undefined
@@ -137,19 +159,45 @@ async function fetchAllPages(): Promise<RawEntry[]> {
     if (pageCount >= MAX_PAGES) {
       throw new Error(`registry pagination exceeded MAX_PAGES (${MAX_PAGES}) — possible non-terminating cursor`)
     }
-    const url = new URL(REGISTRY_BASE_URL)
-    url.searchParams.set('limit', String(PAGE_LIMIT))
-    if (cursor) url.searchParams.set('cursor', cursor)
-
-    const response = await fetch(url.toString())
-    if (!response.ok) throw new Error(`registry fetch failed: ${response.status}`)
-    const data = (await response.json()) as RawResponse
+    const data = await fetchPage(cursor)
     all.push(...data.servers)
     cursor = data.metadata.nextCursor
     pageCount++
   } while (cursor)
 
   return all
+}
+
+/** Latest-version entries only, normalized into what the UI consumes. */
+function toEntries(rawEntries: RawEntry[]): RegistryServerEntry[] {
+  return rawEntries
+    .filter((e) => e._meta?.['io.modelcontextprotocol.registry/official']?.isLatest === true)
+    .map((e) => normalizeRawServer(e.server))
+    .filter((e): e is RegistryServerEntry => e !== null)
+}
+
+/**
+ * Walks the remaining pages after the first has already been handed to the UI, then
+ * rewrites the cache with the complete set for next launch.
+ */
+async function completeInBackground(
+  userDataDir: string,
+  firstPage: RawEntry[],
+  cursor: string
+): Promise<void> {
+  const all = [...firstPage]
+  let next: string | undefined = cursor
+  let pageCount = 1
+
+  while (next && pageCount < MAX_PAGES) {
+    const data: RawResponse = await fetchPage(next)
+    all.push(...data.servers)
+    next = data.metadata.nextCursor
+    pageCount += 1
+  }
+
+  const entries = toEntries(all)
+  if (entries.length > 0) writeCache(userDataDir, entries)
 }
 
 export function cachePath(userDataDir: string): string {
@@ -177,18 +225,43 @@ export interface RegistryLoadResult {
   fromCache: boolean
 }
 
+/**
+ * The first page is returned as soon as it lands and the rest is walked in the
+ * background. A cold start previously awaited every page sequentially before a single
+ * server could render, so the very first launch — the one with no cache to fall back
+ * on — was the slowest the app ever gets.
+ */
 export async function loadRegistry(userDataDir: string): Promise<RegistryLoadResult> {
   try {
-    const rawEntries = await fetchAllPages()
-    const latestOnly = rawEntries.filter(
-      (e) => e._meta?.['io.modelcontextprotocol.registry/official']?.isLatest === true
-    )
-    const entries = latestOnly
-      .map((e) => normalizeRawServer(e.server))
-      .filter((e): e is RegistryServerEntry => e !== null)
-    if (entries.length > 0) {
+    const first = await fetchPage()
+    const entries = toEntries(first.servers)
+
+    // Only seed the cache from page one when there's nothing better already there.
+    // The registry runs to ~15,000 entries, so overwriting a complete cache with a
+    // single page would shrink the catalogue every launch until the background walk
+    // finished — and lose it entirely if the app closed first.
+    const existing = readCache(userDataDir)
+    if (entries.length > 0 && (!existing || existing.length <= entries.length)) {
       writeCache(userDataDir, entries)
     }
+
+    if (first.metadata.nextCursor) {
+      void completeInBackground(userDataDir, first.servers, first.metadata.nextCursor).catch(() => {})
+    }
+
+    return { entries, fromCache: false }
+  } catch {
+    const cached = readCache(userDataDir)
+    if (cached) return { entries: cached, fromCache: true }
+    return { entries: [], fromCache: false }
+  }
+}
+
+/** Every page, awaited. Used where completeness matters more than time to first paint. */
+export async function loadRegistryComplete(userDataDir: string): Promise<RegistryLoadResult> {
+  try {
+    const entries = toEntries(await fetchAllPages())
+    if (entries.length > 0) writeCache(userDataDir, entries)
     return { entries, fromCache: false }
   } catch {
     const cached = readCache(userDataDir)

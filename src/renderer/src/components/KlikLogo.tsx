@@ -1,21 +1,44 @@
 import React from 'react'
+import { motion, useReducedMotion } from 'motion/react'
 import { cn } from '@/lib/utils'
+import { SPRING } from '@/lib/motion'
 
-interface KlikLogoProps {
-  /** Pixel size of the square mark. Wordmark scales alongside it. */
+export type MarkState = 'idle' | 'open' | 'seating' | 'working'
+
+interface KlikMarkProps {
   size?: number
-  /** Render the "Klik" wordmark beside the mark. */
-  showWordmark?: boolean
+  /**
+   * `idle` — the four quadrants form a solid tile.
+   * `open` — the two travelling quadrants sit apart, waiting.
+   * `seating` — they spring home. This is the install moment.
+   * `working` — they breathe apart and back, serving as the loader.
+   */
+  state?: MarkState
   className?: string
 }
 
 /**
- * Klik brand mark — a copper "click target" reticle: a solid center dot with four
- * cardinal ticks, reading as a precise, deliberate click (the app installs an MCP
- * server in one press). Self-contained inline SVG so it stays crisp at any size and
- * needs no asset pipeline. The reticle sits in graphite for contrast on the copper tile.
+ * Klik's mark: four quadrants, two of which travel. At rest it reads as one solid
+ * tile; the two lighter quadrants seat into place with a spring. That seating IS the
+ * product's verb, so the same mark serves as the logo, the install animation, and the
+ * loading state — rather than a logo plus an unrelated stock spinner.
+ *
+ * Colour comes from `currentColor`, so the mark inherits whatever surface it sits on
+ * and needs no per-theme variant.
  */
-export function KlikMark({ size = 28, className }: { size?: number; className?: string }): React.JSX.Element {
+export function KlikMark({ size = 28, state = 'idle', className }: KlikMarkProps): React.JSX.Element {
+  const prefersReducedMotion = useReducedMotion()
+
+  const isWorking = state === 'working' && !prefersReducedMotion
+  // Only `open` holds the pieces apart; `seating` is the journey home to 0.
+  const parked = state === 'open' && !prefersReducedMotion ? 5 : 0
+
+  const transition = isWorking
+    ? { duration: 1.4, repeat: Infinity, ease: 'easeInOut' as const }
+    : state === 'seating'
+      ? SPRING.expressive
+      : SPRING.standard
+
   return (
     <svg
       width={size}
@@ -23,39 +46,53 @@ export function KlikMark({ size = 28, className }: { size?: number; className?: 
       viewBox="0 0 32 32"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={cn('shrink-0', className)}
+      className={cn('shrink-0 text-primary', className)}
       aria-hidden
     >
-      <defs>
-        <linearGradient id="klik-copper" x1="4" y1="3" x2="28" y2="29" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#f2ac66" />
-          <stop offset="1" stopColor="#d3762c" />
-        </linearGradient>
-      </defs>
-      {/* Tile */}
-      <rect x="2" y="2" width="28" height="28" rx="9" fill="url(#klik-copper)" />
-      {/* Top bevel highlight */}
-      <rect x="2.5" y="2.5" width="27" height="27" rx="8.5" stroke="#ffffff" strokeOpacity="0.22" />
-      {/* Reticle — deep graphite on copper */}
-      <g stroke="#17191b" strokeWidth="2.6" strokeLinecap="round">
-        <line x1="16" y1="5.5" x2="16" y2="9.5" />
-        <line x1="16" y1="22.5" x2="16" y2="26.5" />
-        <line x1="5.5" y1="16" x2="9.5" y2="16" />
-        <line x1="22.5" y1="16" x2="26.5" y2="16" />
-      </g>
-      <circle cx="16" cy="16" r="3.1" fill="#17191b" />
+      {/* Anchored quadrants — the frame the travelling pieces seat against. */}
+      <path d="M4 8a4 4 0 0 1 4-4h7v10a2 2 0 0 1-2 2H4V8Z" fill="currentColor" />
+      <path d="M17 16h11v8a4 4 0 0 1-4 4h-7V16Z" fill="currentColor" />
+
+      {/* Travelling quadrants. */}
+      <motion.path
+        d="M17 4h7a4 4 0 0 1 4 4v6H19a2 2 0 0 1-2-2V4Z"
+        fill="currentColor"
+        opacity={0.55}
+        animate={isWorking ? { x: [0, 5, 0], y: [0, -5, 0] } : { x: parked, y: -parked }}
+        transition={transition}
+      />
+      <motion.path
+        d="M4 18h9a2 2 0 0 1 2 2v8H8a4 4 0 0 1-4-4v-6Z"
+        fill="currentColor"
+        opacity={0.55}
+        animate={isWorking ? { x: [0, -5, 0], y: [0, 5, 0] } : { x: -parked, y: parked }}
+        transition={transition}
+      />
     </svg>
   )
 }
 
-export function KlikLogo({ size = 28, showWordmark = true, className }: KlikLogoProps): React.JSX.Element {
+interface KlikLogoProps {
+  /** Pixel size of the square mark. Wordmark scales alongside it. */
+  size?: number
+  showWordmark?: boolean
+  state?: MarkState
+  className?: string
+}
+
+export function KlikLogo({
+  size = 28,
+  showWordmark = true,
+  state = 'idle',
+  className
+}: KlikLogoProps): React.JSX.Element {
   return (
-    <span className={cn('inline-flex items-center gap-2', className)}>
-      <KlikMark size={size} />
+    <span className={cn('inline-flex items-center gap-2.5', className)}>
+      <KlikMark size={size} state={state} />
       {showWordmark && (
         <span
-          className="font-heading font-bold tracking-tight text-foreground"
-          style={{ fontSize: size * 0.62 }}
+          className="font-heading font-semibold tracking-tight text-foreground"
+          style={{ fontSize: size * 0.66 }}
         >
           Klik
         </span>

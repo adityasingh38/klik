@@ -21,15 +21,16 @@ const plugin: PluginEntry = {
 }
 
 const ok = { success: true, stdout: '', message: '' }
+const asyncOk = async () => ok
 
 function fakeCli(overrides: Partial<PluginCli> = {}): PluginCli {
   return {
-    isCliAvailable: () => true,
-    listInstalledPlugins: () => [],
-    listMarketplaceNames: () => ['claude-plugins-official'],
-    addMarketplace: vi.fn(() => ok),
-    installPlugin: vi.fn(() => ok),
-    uninstallPlugin: vi.fn(() => ok),
+    isCliAvailable: async () => true,
+    listInstalledPlugins: async () => [],
+    listMarketplaceNames: async () => ['claude-plugins-official'],
+    addMarketplace: vi.fn(asyncOk),
+    installPlugin: vi.fn(asyncOk),
+    uninstallPlugin: vi.fn(asyncOk),
     ...overrides
   }
 }
@@ -41,24 +42,24 @@ describe('marketplaceSourceOf', () => {
 })
 
 describe('buildPluginInstallPreview', () => {
-  it('plans only the install when the marketplace is already trusted', () => {
-    const preview = buildPluginInstallPreview({ plugin }, fakeCli())
+  it('plans only the install when the marketplace is already trusted', async () => {
+    const preview = await buildPluginInstallPreview({ plugin }, fakeCli())
     expect(preview.marketplaceAlreadyKnown).toBe(true)
     expect(preview.commands).toEqual(['claude plugin install feature-dev@claude-plugins-official --scope user'])
   })
 
-  it('plans a marketplace add first and warns about trusting it', () => {
-    const preview = buildPluginInstallPreview({ plugin }, fakeCli({ listMarketplaceNames: () => [] }))
+  it('plans a marketplace add first and warns about trusting it', async () => {
+    const preview = await buildPluginInstallPreview({ plugin }, fakeCli({ listMarketplaceNames: async () => [] }))
     expect(preview.marketplaceAlreadyKnown).toBe(false)
     expect(preview.commands[0]).toBe('claude plugin marketplace add anthropics/claude-code')
     expect(preview.warnings.join(' ')).toMatch(/only add sources you trust/i)
   })
 
-  it('reports an already-installed plugin', () => {
-    const preview = buildPluginInstallPreview(
+  it('reports an already-installed plugin', async () => {
+    const preview = await buildPluginInstallPreview(
       { plugin },
       fakeCli({
-        listInstalledPlugins: () => [
+        listInstalledPlugins: async () => [
           { id: plugin.id, version: '1.0.0', enabled: true, installPath: 'x' }
         ]
       })
@@ -66,17 +67,17 @@ describe('buildPluginInstallPreview', () => {
     expect(preview.alreadyInstalled).toBe(true)
   })
 
-  it('reports a missing CLI instead of pretending it can install', () => {
-    const preview = buildPluginInstallPreview({ plugin }, fakeCli({ isCliAvailable: () => false }))
+  it('reports a missing CLI instead of pretending it can install', async () => {
+    const preview = await buildPluginInstallPreview({ plugin }, fakeCli({ isCliAvailable: async () => false }))
     expect(preview.cliAvailable).toBe(false)
     expect(preview.warnings.join(' ')).toMatch(/not found on PATH/)
   })
 })
 
 describe('installPluginEntry', () => {
-  it('refuses to register an unknown marketplace without consent', () => {
-    const cli = fakeCli({ listMarketplaceNames: () => [] })
-    const results = installPluginEntry({ plugin }, cli)
+  it('refuses to register an unknown marketplace without consent', async () => {
+    const cli = fakeCli({ listMarketplaceNames: async () => [] })
+    const results = await installPluginEntry({ plugin }, cli)
 
     expect(results[0].status).toBe('error')
     expect(results[0].message).toMatch(/not confirmed/)
@@ -84,36 +85,36 @@ describe('installPluginEntry', () => {
     expect(cli.installPlugin).not.toHaveBeenCalled()
   })
 
-  it('adds the marketplace then installs once consent is given', () => {
-    const cli = fakeCli({ listMarketplaceNames: () => [] })
-    const results = installPluginEntry({ plugin, allowMarketplaceAdd: true }, cli)
+  it('adds the marketplace then installs once consent is given', async () => {
+    const cli = fakeCli({ listMarketplaceNames: async () => [] })
+    const results = await installPluginEntry({ plugin, allowMarketplaceAdd: true }, cli)
 
     expect(cli.addMarketplace).toHaveBeenCalledWith('anthropics/claude-code')
     expect(cli.installPlugin).toHaveBeenCalledWith(plugin.id)
     expect(results.map((r) => r.status)).toEqual(['done', 'done'])
   })
 
-  it('does not install when adding the marketplace fails', () => {
+  it('does not install when adding the marketplace fails', async () => {
     const cli = fakeCli({
-      listMarketplaceNames: () => [],
-      addMarketplace: vi.fn(() => ({ success: false, stdout: '', message: 'network down' }))
+      listMarketplaceNames: async () => [],
+      addMarketplace: vi.fn(async () => ({ success: false, stdout: '', message: 'network down' }))
     })
-    const results = installPluginEntry({ plugin, allowMarketplaceAdd: true }, cli)
+    const results = await installPluginEntry({ plugin, allowMarketplaceAdd: true }, cli)
 
     expect(results).toHaveLength(1)
     expect(results[0].status).toBe('error')
     expect(cli.installPlugin).not.toHaveBeenCalled()
   })
 
-  it('installs directly when the marketplace is already trusted', () => {
+  it('installs directly when the marketplace is already trusted', async () => {
     const cli = fakeCli()
-    const results = installPluginEntry({ plugin }, cli)
+    const results = await installPluginEntry({ plugin }, cli)
     expect(cli.addMarketplace).not.toHaveBeenCalled()
     expect(results[0].status).toBe('done')
   })
 
-  it('errors when the CLI is unavailable', () => {
-    const results = installPluginEntry({ plugin }, fakeCli({ isCliAvailable: () => false }))
+  it('errors when the CLI is unavailable', async () => {
+    const results = await installPluginEntry({ plugin }, fakeCli({ isCliAvailable: async () => false }))
     expect(results[0].status).toBe('error')
   })
 })

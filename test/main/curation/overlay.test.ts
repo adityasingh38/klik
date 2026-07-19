@@ -16,13 +16,32 @@ describe('loadCuration', () => {
     vi.unstubAllGlobals()
   })
 
-  it('returns the fetched overlay when the network call succeeds', async () => {
-    const remoteOverlay = [{ registryId: 'ai.example/foo', verified: true, tested: true, category: 'dev-tools', warnings: [] }]
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => remoteOverlay }))
+  it('reads from disk without waiting on the network', () => {
+    // A never-settling fetch must not delay the answer: this used to sit in front of
+    // the first screen with a five second timeout.
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(() => new Promise(() => {})))
+    const bundled = [{ registryId: 'ai.example/foo', verified: true, tested: true, category: 'dev-tools', warnings: [] }]
+    mkdirSync(join(tmpDir, 'curation'), { recursive: true })
+    writeFileSync(bundledOverlayPath(tmpDir), JSON.stringify(bundled))
 
-    const result = await loadCuration(tmpDir)
+    const result = loadCuration(tmpDir, tmpDir)
 
-    expect(result).toEqual(remoteOverlay)
+    // Returned synchronously, while that fetch is still outstanding.
+    expect(result).toEqual(bundled)
+  })
+
+  it('prefers a refreshed copy over the bundled one', () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+    mkdirSync(join(tmpDir, 'curation'), { recursive: true })
+    writeFileSync(
+      bundledOverlayPath(tmpDir),
+      JSON.stringify([{ registryId: 'a', verified: false, tested: false, category: 'misc', warnings: [] }])
+    )
+    const fresher = [{ registryId: 'a', verified: true, tested: true, category: 'dev-tools', warnings: [] }]
+    mkdirSync(join(tmpDir, 'feeds'), { recursive: true })
+    writeFileSync(join(tmpDir, 'feeds', 'overlay.json'), JSON.stringify(fresher))
+
+    expect(loadCuration(tmpDir, tmpDir)).toEqual(fresher)
   })
 
   it('falls back to the bundled overlay file when the fetch fails', async () => {
@@ -31,7 +50,7 @@ describe('loadCuration', () => {
     mkdirSync(join(tmpDir, 'curation'), { recursive: true })
     writeFileSync(bundledOverlayPath(tmpDir), JSON.stringify(bundled))
 
-    const result = await loadCuration(tmpDir)
+    const result = loadCuration(tmpDir, tmpDir)
 
     expect(result).toEqual(bundled)
   })
@@ -39,7 +58,7 @@ describe('loadCuration', () => {
   it('returns an empty array when both the fetch and the bundled file are unavailable', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
 
-    const result = await loadCuration(tmpDir)
+    const result = loadCuration(tmpDir, tmpDir)
 
     expect(result).toEqual([])
   })

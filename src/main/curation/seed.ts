@@ -1,40 +1,23 @@
-import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { readFeed, refreshFeed } from './feed'
 import type { CuratedServerEntry, MergedServerEntry } from '../../shared/types'
 
-const SEED_URL = 'https://raw.githubusercontent.com/adityasingh38/klik/master/curation/servers.json'
-const FETCH_TIMEOUT_MS = 5000
+const SEED_FILE = 'servers.json'
+const SEED_URL = `https://raw.githubusercontent.com/adityasingh38/klik/master/curation/${SEED_FILE}`
 
 export function bundledSeedPath(resourcesDir: string): string {
   return join(resourcesDir, 'curation', 'servers.json')
 }
 
-function readBundledSeed(resourcesDir: string): CuratedServerEntry[] {
-  const path = bundledSeedPath(resourcesDir)
-  if (!existsSync(path)) return []
-  try {
-    return JSON.parse(readFileSync(path, 'utf-8')) as CuratedServerEntry[]
-  } catch {
-    return []
-  }
-}
-
 /**
- * Klik's own catalog of well-known servers. Fetched remotely so the list can be
- * corrected between releases (a package getting deprecated is a correctness issue,
- * not a cosmetic one), falling back to the copy shipped in the installer.
+ * Klik's own catalogue of well-known servers, read from disk so the first screen
+ * never waits on the network. The list can still be corrected between releases — a
+ * package being deprecated is a correctness issue, not a cosmetic one — but that
+ * correction lands on the next launch rather than holding up this one.
  */
-export async function loadSeedServers(resourcesDir: string): Promise<CuratedServerEntry[]> {
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-    const response = await fetch(SEED_URL, { signal: controller.signal })
-    clearTimeout(timeout)
-    if (!response.ok) throw new Error(`seed fetch failed: ${response.status}`)
-    return (await response.json()) as CuratedServerEntry[]
-  } catch {
-    return readBundledSeed(resourcesDir)
-  }
+export function loadSeedServers(resourcesDir: string, userDataDir: string): CuratedServerEntry[] {
+  refreshFeed(SEED_FILE, SEED_URL, userDataDir)
+  return readFeed<CuratedServerEntry>(SEED_FILE, resourcesDir, userDataDir)
 }
 
 /**

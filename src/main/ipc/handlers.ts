@@ -1,7 +1,10 @@
 import { app, ipcMain } from 'electron'
-import { loadRegistry, readCache } from '../registry/client'
-import { loadCuration, mergeCuration } from '../curation/overlay'
-import { loadSeedServers, mergeSeedServers } from '../curation/seed'
+import {
+  getFeatured,
+  queryServers,
+  serverCategories,
+  findServer
+} from '../registry/catalogue'
 import { claudeDesktopAdapter } from '../clients/claudeDesktop'
 import { cursorAdapter } from '../clients/cursor'
 import { vscodeAdapter } from '../clients/vscode'
@@ -13,13 +16,22 @@ import { buildInstallPreview } from '../install/preflight'
 import { buildSkillInstallPreview } from '../skills/preflight'
 import { installSkill, uninstallSkill } from '../skills/installer'
 import { listInstalledSkills } from '../skills/state'
+import { loadSkillCatalog } from '../skills/catalog'
 import {
   buildPluginInstallPreview,
   installPluginEntry,
   uninstallPluginEntry
 } from '../plugins/installer'
 import { listInstalledPlugins } from '../plugins/cli'
-import type { ClientId, GetServersResult, InstallRequest, PreflightRequest } from '../../shared/types'
+import { readPreferences, writePreferences } from '../prefs/store'
+import type {
+  ClientId,
+  InstallRequest,
+  PreflightRequest,
+  ServerQuery
+} from '../../shared/types'
+import type { Preferences } from '../../shared/prefs'
+import type { SkillEntry } from '../../shared/catalog'
 import type {
   PluginInstallRequest,
   PluginPreflightRequest,
@@ -44,25 +56,21 @@ function bundledResourcesDir(): string {
 }
 
 export function registerIpcHandlers(): void {
-  ipcMain.handle('klik:getServers', async (): Promise<GetServersResult> => {
-    const userDataDir = app.getPath('userData')
-    const resourcesDir = bundledResourcesDir()
-    const cached = readCache(userDataDir)
+  ipcMain.handle('klik:getFeatured', (_event, ids: string[]) =>
+    getFeatured(app.getPath('userData'), bundledResourcesDir(), ids)
+  )
 
-    if (cached) {
-      // Serve the on-disk cache instantly; refresh it in the background for next launch.
-      void loadRegistry(userDataDir).catch(() => {})
-      const [curation, seed] = await Promise.all([loadCuration(resourcesDir), loadSeedServers(resourcesDir)])
-      return { servers: mergeSeedServers(mergeCuration(cached, curation), seed), fromCache: true }
-    }
+  ipcMain.handle('klik:queryServers', (_event, query: ServerQuery) =>
+    queryServers(app.getPath('userData'), bundledResourcesDir(), query)
+  )
 
-    const [{ entries, fromCache }, curation, seed] = await Promise.all([
-      loadRegistry(userDataDir),
-      loadCuration(resourcesDir),
-      loadSeedServers(resourcesDir)
-    ])
-    return { servers: mergeSeedServers(mergeCuration(entries, curation), seed), fromCache }
-  })
+  ipcMain.handle('klik:serverCategories', () =>
+    serverCategories(app.getPath('userData'), bundledResourcesDir())
+  )
+
+  ipcMain.handle('klik:findServer', (_event, id: string) =>
+    findServer(app.getPath('userData'), bundledResourcesDir(), id)
+  )
 
   ipcMain.handle('klik:getClients', () => detectInstalledClients())
 
@@ -87,6 +95,10 @@ export function registerIpcHandlers(): void {
   // --- Skills -------------------------------------------------------------
 
   ipcMain.handle('klik:getTools', () => detectTools())
+
+  ipcMain.handle('klik:getSkills', (_event, bundled: SkillEntry[]) =>
+    loadSkillCatalog(app.getPath('userData'), bundled)
+  )
 
   ipcMain.handle('klik:getInstalledSkills', () => listInstalledSkills(app.getPath('userData')))
 
@@ -120,4 +132,12 @@ export function registerIpcHandlers(): void {
   )
 
   ipcMain.handle('klik:uninstallPlugin', (_event, pluginId: string) => uninstallPluginEntry(pluginId))
+
+  // --- Preferences ----------------------------------------------------------
+
+  ipcMain.handle('klik:getPrefs', () => readPreferences(app.getPath('userData')))
+
+  ipcMain.handle('klik:setPrefs', (_event, next: Partial<Preferences>) =>
+    writePreferences(app.getPath('userData'), next)
+  )
 }

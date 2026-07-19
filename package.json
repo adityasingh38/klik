@@ -1,6 +1,6 @@
 {
   "name": "klikmcp",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Klik — one-click MCP server installer for Windows",
   "private": true,
   "license": "MIT",
@@ -47,6 +47,7 @@
     "electron": "^31.0.0",
     "electron-builder": "^24.13.3",
     "electron-vite": "^2.3.0",
+    "playwright-core": "^1.61.1",
     "typescript": "^5.5.3",
     "vite": "^5.3.1",
     "vitest": "^1.6.0"

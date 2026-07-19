@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { ServerLogo } from '../ServerLogo'
 import { HostCompat } from '../HostCompat'
+import { itemColor, itemBloom } from '@/lib/itemColor'
 import type { ClientId, MergedServerEntry } from '../../../../shared/types'
 
 interface ServerDetailDrawerProps {
@@ -30,7 +31,7 @@ interface ServerDetailDrawerProps {
 function Meta({ label, value }: { label: string; value: React.ReactNode }): React.JSX.Element {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
       <span className="font-mono text-xs text-foreground">{value}</span>
     </div>
   )
@@ -41,13 +42,18 @@ export function ServerDetailDrawer(props: ServerDetailDrawerProps): React.JSX.El
   if (!server) return null
 
   const requiredEnv = server.requiredEnv.filter((e) => e.isRequired)
+  // The drawer carries the colour of the card it opened from, so the two read as the
+  // same object rather than a neutral panel appearing over an unrelated one.
+  const color = itemColor(server.id, server.title)
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} position="right">
       <DrawerPopup showCloseButton className="w-[26rem] max-w-[92vw]">
-        <DrawerHeader>
-          <ServerLogo server={server} size={44} className="mb-1 rounded-lg" />
-          <div className="flex flex-wrap items-center gap-2">
+        {/* The tint sits behind the header rather than on it: clipping the bloom on the
+            header itself also clipped the id line underneath the title. */}
+        <DrawerHeader className="relative" style={{ background: itemBloom(color, 9, 30) }}>
+          <ServerLogo server={server} size={44} className="relative mb-1 rounded-xl" />
+          <div className="relative flex flex-wrap items-center gap-2">
             <DrawerTitle>{server.title}</DrawerTitle>
             {server.curation?.verified && (
               <Badge className="gap-1 bg-accent text-accent-foreground">
@@ -61,7 +67,7 @@ export function ServerDetailDrawer(props: ServerDetailDrawerProps): React.JSX.El
             )}
             {isInstalled && <Badge className="bg-success text-success-foreground">Installed</Badge>}
           </div>
-          <DrawerDescription className="font-mono text-[11px]">{server.id}</DrawerDescription>
+          <DrawerDescription className="relative font-mono text-[11px]">{server.id}</DrawerDescription>
         </DrawerHeader>
 
         <DrawerPanel className="flex flex-col gap-5">
@@ -94,7 +100,7 @@ export function ServerDetailDrawer(props: ServerDetailDrawerProps): React.JSX.El
 
           {requiredEnv.length > 0 && (
             <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
                 <KeyRound className="size-3.5" /> Required configuration
               </div>
               <div className="flex flex-col gap-2">

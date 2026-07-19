@@ -6,11 +6,17 @@
     "version": "2026.7.4",
     "transport": "stdio",
     "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-memory"],
-    "requiredRuntime": ["node"],
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-memory"
+    ],
+    "requiredRuntime": [
+      "node"
+    ],
     "requiredEnv": [],
     "repositoryUrl": "https://github.com/modelcontextprotocol/servers",
     "websiteUrl": "https://modelcontextprotocol.io",
+    "iconUrl": "https://github.com/modelcontextprotocol.png?size=80",
     "verified": true,
     "tested": false,
     "category": "Productivity",
@@ -23,11 +29,17 @@
     "version": "2026.7.4",
     "transport": "stdio",
     "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
-    "requiredRuntime": ["node"],
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-sequential-thinking"
+    ],
+    "requiredRuntime": [
+      "node"
+    ],
     "requiredEnv": [],
     "repositoryUrl": "https://github.com/modelcontextprotocol/servers",
     "websiteUrl": "https://modelcontextprotocol.io",
+    "iconUrl": "https://github.com/modelcontextprotocol.png?size=80",
     "verified": true,
     "tested": false,
     "category": "AI & Models",
@@ -40,15 +52,23 @@
     "version": "2026.7.4",
     "transport": "stdio",
     "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-everything"],
-    "requiredRuntime": ["node"],
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-everything"
+    ],
+    "requiredRuntime": [
+      "node"
+    ],
     "requiredEnv": [],
     "repositoryUrl": "https://github.com/modelcontextprotocol/servers",
     "websiteUrl": "https://modelcontextprotocol.io",
+    "iconUrl": "https://github.com/modelcontextprotocol.png?size=80",
     "verified": true,
     "tested": false,
     "category": "Dev Tools",
-    "warnings": ["A demo/test server, not something you need day to day."]
+    "warnings": [
+      "A demo/test server, not something you need day to day."
+    ]
   },
   {
     "id": "com.microsoft/playwright-mcp",
@@ -57,15 +77,23 @@
     "version": "0.0.78",
     "transport": "stdio",
     "command": "npx",
-    "args": ["-y", "@playwright/mcp@latest"],
-    "requiredRuntime": ["node"],
+    "args": [
+      "-y",
+      "@playwright/mcp@latest"
+    ],
+    "requiredRuntime": [
+      "node"
+    ],
     "requiredEnv": [],
     "repositoryUrl": "https://github.com/microsoft/playwright-mcp",
     "websiteUrl": "https://playwright.dev",
+    "iconUrl": "https://github.com/microsoft.png?size=80",
     "verified": true,
     "tested": false,
     "category": "Browser & Web",
-    "warnings": ["Downloads a browser on first run and can visit any site the model asks for."]
+    "warnings": [
+      "Downloads a browser on first run and can visit any site the model asks for."
+    ]
   },
   {
     "id": "com.upstash/context7",
@@ -74,8 +102,13 @@
     "version": "3.2.4",
     "transport": "stdio",
     "command": "npx",
-    "args": ["-y", "@upstash/context7-mcp@latest"],
-    "requiredRuntime": ["node"],
+    "args": [
+      "-y",
+      "@upstash/context7-mcp@latest"
+    ],
+    "requiredRuntime": [
+      "node"
+    ],
     "requiredEnv": [],
     "repositoryUrl": "https://github.com/upstash/context7",
     "websiteUrl": "https://context7.com",
@@ -91,8 +124,13 @@
     "version": "2.4.1",
     "transport": "stdio",
     "command": "npx",
-    "args": ["-y", "@notionhq/notion-mcp-server"],
-    "requiredRuntime": ["node"],
+    "args": [
+      "-y",
+      "@notionhq/notion-mcp-server"
+    ],
+    "requiredRuntime": [
+      "node"
+    ],
     "requiredEnv": [
       {
         "name": "NOTION_TOKEN",
@@ -103,10 +141,13 @@
     ],
     "repositoryUrl": "https://github.com/makenotion/notion-mcp-server",
     "websiteUrl": "https://developers.notion.com",
+    "iconUrl": "https://github.com/makenotion.png?size=80",
     "verified": true,
     "tested": false,
     "category": "Docs",
-    "warnings": ["Reaches every page you share with the integration."]
+    "warnings": [
+      "Reaches every page you share with the integration."
+    ]
   },
   {
     "id": "com.firecrawl/firecrawl-mcp",
@@ -115,8 +156,13 @@
     "version": "3.22.3",
     "transport": "stdio",
     "command": "npx",
-    "args": ["-y", "firecrawl-mcp"],
-    "requiredRuntime": ["node"],
+    "args": [
+      "-y",
+      "firecrawl-mcp"
+    ],
+    "requiredRuntime": [
+      "node"
+    ],
     "requiredEnv": [
       {
         "name": "FIRECRAWL_API_KEY",
@@ -139,8 +185,13 @@
     "version": "3.2.1",
     "transport": "stdio",
     "command": "npx",
-    "args": ["-y", "exa-mcp-server"],
-    "requiredRuntime": ["node"],
+    "args": [
+      "-y",
+      "exa-mcp-server"
+    ],
+    "requiredRuntime": [
+      "node"
+    ],
     "requiredEnv": [
       {
         "name": "EXA_API_KEY",
@@ -163,8 +214,14 @@
     "version": "0.13.2",
     "transport": "stdio",
     "command": "npx",
-    "args": ["-y", "figma-developer-mcp", "--stdio"],
-    "requiredRuntime": ["node"],
+    "args": [
+      "-y",
+      "figma-developer-mcp",
+      "--stdio"
+    ],
+    "requiredRuntime": [
+      "node"
+    ],
     "requiredEnv": [
       {
         "name": "FIGMA_API_KEY",
@@ -175,6 +232,7 @@
     ],
     "repositoryUrl": "https://github.com/GLips/Figma-Context-MCP",
     "websiteUrl": "https://www.framelink.ai",
+    "iconUrl": "https://www.framelink.ai/favicon-light.svg",
     "verified": true,
     "tested": false,
     "category": "Dev Tools",
@@ -187,8 +245,13 @@
     "version": "4.0.4",
     "transport": "stdio",
     "command": "npx",
-    "args": ["-y", "mcp-server-kubernetes"],
-    "requiredRuntime": ["node"],
+    "args": [
+      "-y",
+      "mcp-server-kubernetes"
+    ],
+    "requiredRuntime": [
+      "node"
+    ],
     "requiredEnv": [],
     "repositoryUrl": "https://github.com/Flux159/mcp-server-kubernetes",
     "websiteUrl": "https://github.com/Flux159/mcp-server-kubernetes",
@@ -206,11 +269,17 @@
     "version": "0.1.3",
     "transport": "stdio",
     "command": "npx",
-    "args": ["-y", "@browsermcp/mcp@latest"],
-    "requiredRuntime": ["node"],
+    "args": [
+      "-y",
+      "@browsermcp/mcp@latest"
+    ],
+    "requiredRuntime": [
+      "node"
+    ],
     "requiredEnv": [],
     "repositoryUrl": "https://github.com/browsermcp/mcp",
     "websiteUrl": "https://browsermcp.io",
+    "iconUrl": "https://github.com/browsermcp.png?size=80",
     "verified": true,
     "tested": false,
     "category": "Browser & Web",

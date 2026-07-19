@@ -3,15 +3,29 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils'
 import { toolBrand, toolLogoUrl, type ToolBrand } from '../../../shared/tools'
 
-/** The accent dot — the fallback mark when a vendor logo can't be loaded. */
-function AccentDot({ accent, detected }: { accent: string; detected: boolean }): React.JSX.Element {
+/**
+ * The accent dot — the fallback mark when a vendor logo can't be loaded. It scales
+ * with the mark it stands in for; a fixed-size dot inside a larger slot reads as a
+ * rendering fault rather than a deliberate fallback.
+ */
+function AccentDot({
+  accent,
+  detected,
+  size = 6
+}: {
+  accent: string
+  detected: boolean
+  size?: number
+}): React.JSX.Element {
   return (
     <span
       aria-hidden
-      className="size-1.5 shrink-0 rounded-full"
+      className="shrink-0 rounded-full"
       style={{
+        width: size,
+        height: size,
         backgroundColor: detected ? accent : 'transparent',
-        boxShadow: `inset 0 0 0 1.5px ${accent}${detected ? '' : 'b0'}`
+        boxShadow: `inset 0 0 0 ${Math.max(1.5, size / 7)}px ${accent}${detected ? '' : 'b0'}`
       }}
     />
   )
@@ -43,7 +57,7 @@ export function ToolMark({
       className="relative inline-flex shrink-0 items-center justify-center"
       style={{ width: size, height: size }}
     >
-      {status !== 'ok' && <AccentDot accent={brand.accent} detected={detected} />}
+      {status !== 'ok' && <AccentDot accent={brand.accent} detected={detected} size={Math.round(size * 0.62)} />}
       {src && status !== 'failed' && (
         <img
           src={src}
@@ -97,6 +111,8 @@ interface ToolCompatProps {
   max?: number
   /** detail: an honest one-line note under the chips. */
   note?: React.ReactNode
+  /** inline: drop the "Works in" label where the marks alone carry it. */
+  showLabel?: boolean
   className?: string
 }
 
@@ -106,7 +122,7 @@ interface ToolCompatProps {
  * MCP). Detected tools sort first and render filled.
  */
 export function ToolCompat(props: ToolCompatProps): React.JSX.Element | null {
-  const { toolIds, detectedToolIds, variant, max = 4, note, className } = props
+  const { toolIds, detectedToolIds, variant, max = 4, note, showLabel = true, className } = props
 
   const detectedSet = new Set(detectedToolIds)
   const brands = toolIds
@@ -123,9 +139,11 @@ export function ToolCompat(props: ToolCompatProps): React.JSX.Element | null {
     const overflowLabel = ordered.slice(max).map((b) => b.short).join(', ')
     return (
       <span className={cn('inline-flex flex-wrap items-center gap-1', className)}>
-        <span className="mr-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          Works in
-        </span>
+        {showLabel && (
+          <span className="mr-0.5 text-[11px] font-medium text-muted-foreground">
+            Works in
+          </span>
+        )}
         {shown.map((brand) => (
           <span key={brand.id} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
             <ToolMark brand={brand} detected={detectedSet.has(brand.id)} />
@@ -150,12 +168,12 @@ export function ToolCompat(props: ToolCompatProps): React.JSX.Element | null {
 
   return (
     <div className={cn('flex flex-col gap-2.5', className)}>
-      <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
         Compatible with
       </div>
       {detected.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-success-foreground">
+          <span className="text-[11px] font-medium text-success-foreground">
             Detected on this device
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -168,7 +186,7 @@ export function ToolCompat(props: ToolCompatProps): React.JSX.Element | null {
       {others.length > 0 && (
         <div className="flex flex-col gap-1.5">
           {detected.length > 0 && (
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="text-[11px] font-medium text-muted-foreground">
               Also compatible
             </span>
           )}

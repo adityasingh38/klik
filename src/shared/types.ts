@@ -135,3 +135,22 @@ export interface GetServersResult {
   servers: MergedServerEntry[]
   fromCache: boolean
 }
+
+
+/** A filter over the catalogue, applied in the main process. */
+export interface ServerQuery {
+  search?: string
+  category?: string
+  verifiedOnly?: boolean
+  offset?: number
+  limit?: number
+}
+
+/** A window of the catalogue plus the totals needed to render around it. */
+export interface ServerPage {
+  servers: MergedServerEntry[]
+  /** How many match the current filter. */
+  total: number
+  /** How many exist in total, regardless of filter. */
+  catalogueTotal: number
+}

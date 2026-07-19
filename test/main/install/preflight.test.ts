@@ -36,11 +36,11 @@ const stdioServer: MergedServerEntry = {
 }
 
 describe('commandLineFor', () => {
-  it('joins the command and args exactly as the client will run them', () => {
+  it('joins the command and args exactly as the client will run them', async () => {
     expect(commandLineFor('npx', ['-y', 'foo@1.0.0'])).toBe('npx -y foo@1.0.0')
   })
 
-  it('returns undefined for a server with no command (http transport)', () => {
+  it('returns undefined for a server with no command (http transport)', async () => {
     expect(commandLineFor(undefined, undefined)).toBeUndefined()
   })
 })
@@ -48,13 +48,13 @@ describe('commandLineFor', () => {
 describe('buildInstallPreview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(isRuntimeAvailable).mockReturnValue(true)
+    vi.mocked(isRuntimeAvailable).mockResolvedValue(true)
     vi.mocked(wingetPackageId).mockReturnValue('Some.Package')
   })
 
-  it('reports the exact command, config paths, and secret names without writing anything', () => {
+  it('reports the exact command, config paths, and secret names without writing anything', async () => {
     const adapter = fakeAdapter('claude-desktop')
-    const preview = buildInstallPreview(
+    const preview = await buildInstallPreview(
       { server: stdioServer, targetClients: ['claude-desktop'] },
       { adaptersById: { 'claude-desktop': adapter } as any }
     )
@@ -75,27 +75,27 @@ describe('buildInstallPreview', () => {
     ])
   })
 
-  it('flags a missing runtime and whether Klik could install it', () => {
-    vi.mocked(isRuntimeAvailable).mockReturnValue(false)
-    const preview = buildInstallPreview(
+  it('flags a missing runtime and whether Klik could install it', async () => {
+    vi.mocked(isRuntimeAvailable).mockResolvedValue(false)
+    const preview = await buildInstallPreview(
       { server: stdioServer, targetClients: ['claude-desktop'] },
       { adaptersById: { 'claude-desktop': fakeAdapter('claude-desktop') } as any }
     )
     expect(preview.runtimes).toEqual([{ runtime: 'node', available: false, canAutoInstall: true }])
   })
 
-  it('marks a runtime with no winget package as not auto-installable', () => {
-    vi.mocked(isRuntimeAvailable).mockReturnValue(false)
+  it('marks a runtime with no winget package as not auto-installable', async () => {
+    vi.mocked(isRuntimeAvailable).mockResolvedValue(false)
     vi.mocked(wingetPackageId).mockReturnValue(null)
-    const preview = buildInstallPreview(
+    const preview = await buildInstallPreview(
       { server: { ...stdioServer, requiredRuntime: ['docker'] }, targetClients: ['claude-desktop'] },
       { adaptersById: { 'claude-desktop': fakeAdapter('claude-desktop') } as any }
     )
     expect(preview.runtimes).toEqual([{ runtime: 'docker', available: false, canAutoInstall: false }])
   })
 
-  it('marks an uninstalled client as an unsupported target with a reason', () => {
-    const preview = buildInstallPreview(
+  it('marks an uninstalled client as an unsupported target with a reason', async () => {
+    const preview = await buildInstallPreview(
       { server: stdioServer, targetClients: ['claude-desktop'] },
       { adaptersById: { 'claude-desktop': fakeAdapter('claude-desktop', { installed: false }) } as any }
     )
@@ -105,7 +105,7 @@ describe('buildInstallPreview', () => {
     })
   })
 
-  it('marks an http server unsupported for a client without http transport', () => {
+  it('marks an http server unsupported for a client without http transport', async () => {
     const httpServer: MergedServerEntry = {
       ...stdioServer,
       transport: 'http',
@@ -115,7 +115,7 @@ describe('buildInstallPreview', () => {
       requiredRuntime: [],
       requiredEnv: []
     }
-    const preview = buildInstallPreview(
+    const preview = await buildInstallPreview(
       { server: httpServer, targetClients: ['claude-desktop'] },
       { adaptersById: { 'claude-desktop': fakeAdapter('claude-desktop', { supportsHttpTransport: false }) } as any }
     )
@@ -124,7 +124,7 @@ describe('buildInstallPreview', () => {
     expect(preview.url).toBe('https://example.com/mcp')
   })
 
-  it('surfaces curation warnings and verification state', () => {
+  it('surfaces curation warnings and verification state', async () => {
     const curated: MergedServerEntry = {
       ...stdioServer,
       curation: {
@@ -135,7 +135,7 @@ describe('buildInstallPreview', () => {
         warnings: ['Requires full disk access.']
       }
     }
-    const preview = buildInstallPreview(
+    const preview = await buildInstallPreview(
       { server: curated, targetClients: ['claude-desktop'] },
       { adaptersById: { 'claude-desktop': fakeAdapter('claude-desktop') } as any }
     )

@@ -1,5 +1,8 @@
-import { spawnSync } from 'node:child_process'
+import { execAsync, memoizeFor } from '../lib/exec'
 import type { RuntimeKind } from '../../shared/types'
+
+/** Whether a runtime is on PATH doesn't change while the app is open. */
+const RUNTIME_TTL_MS = 60000
 
 const WINGET_PACKAGE_IDS: Record<RuntimeKind, string | null> = {
   node: 'OpenJS.NodeJS.LTS',
@@ -15,9 +18,28 @@ const CHECK_COMMANDS: Record<RuntimeKind, string> = {
   docker: 'docker'
 }
 
-export function isRuntimeAvailable(runtime: RuntimeKind): boolean {
-  const result = spawnSync('where', [CHECK_COMMANDS[runtime]], { encoding: 'utf-8' })
-  return result.status === 0
+/**
+ * Async and memoized. This runs once per required runtime while building an install
+ * preview; done synchronously on the main process it froze the interface for the
+ * duration of every lookup, which is the moment the user is waiting on a dialog.
+ */
+const probes = new Map<RuntimeKind, () => Promise<boolean>>()
+
+/** Clears memoized probes. Exists so tests aren't served an answer from a prior case. */
+export function resetRuntimeProbes(): void {
+  probes.clear()
+}
+
+export function isRuntimeAvailable(runtime: RuntimeKind): Promise<boolean> {
+  let probe = probes.get(runtime)
+  if (!probe) {
+    probe = memoizeFor(RUNTIME_TTL_MS, async () => {
+      const result = await execAsync('where', [CHECK_COMMANDS[runtime]], 8000)
+      return result.ok
+    })
+    probes.set(runtime, probe)
+  }
+  return probe()
 }
 
 export function wingetPackageId(runtime: RuntimeKind): string | null {

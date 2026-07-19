@@ -23,6 +23,7 @@ function anthropicSkill(
     repositoryUrl: 'https://github.com/anthropics/skills',
     category,
     compatibleTools: ['claude-code'],
+    tier: 'official',
     verified: true,
     warnings: []
   }

@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { ListFilter, ShieldCheck, TriangleAlert, ExternalLink, Trash2, Info } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import { ShieldCheck, TriangleAlert, ExternalLink, Trash2, Info } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { BlurFade } from '@/components/ui/blur-fade'
@@ -18,7 +17,14 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { ToolCompat } from '../components/ToolBadges'
+import { itemColor, itemWash, itemBloom } from '@/lib/itemColor'
+import { SPRING, staggerDelay } from '@/lib/motion'
+import { motion, useReducedMotion } from 'motion/react'
+import { FilterInput } from '../components/app/FilterInput'
 import { cn } from '@/lib/utils'
+
+/** How many cards mount at once before "Show more". */
+const PAGE_SIZE = 48
 
 /** A fully-normalized catalog item — everything the shared list and drawer need. */
 export interface CatalogDetailItem {
@@ -74,7 +80,7 @@ interface CatalogViewProps {
 
 function MetaTag({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
-    <span className="rounded border border-border/70 px-1.5 py-px text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+    <span className="rounded border border-border/70 px-1.5 py-px text-[11px] font-medium text-muted-foreground">
       {children}
     </span>
   )
@@ -104,12 +110,21 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
   const [category, setCategory] = useState('All')
   const [detail, setDetail] = useState<CatalogDetailItem | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const prefersReducedMotion = useReducedMotion()
 
+  // Multi-source catalogues throw off dozens of categories — one per plugin folder
+  // across every repository. Showing all of them buries the actual content under a
+  // wall of chips, so only the ones carrying real weight are offered up front.
   const categories = useMemo(() => {
     const counts = new Map<string, number>()
     for (const it of items) counts.set(it.category, (counts.get(it.category) ?? 0) + 1)
-    return ['All', ...[...counts.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c)]
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
   }, [items])
+
+  const [showAllCategories, setShowAllCategories] = useState(false)
+  const TOP_CATEGORIES = 7
+  const visibleCategories = showAllCategories ? categories : categories.slice(0, TOP_CATEGORIES)
+  const hiddenCategoryCount = categories.length - visibleCategories.length
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -123,6 +138,14 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
       )
     })
   }, [items, search, category])
+
+  /** Multi-source catalogues run to hundreds of entries; only a window is mounted. */
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+  }, [search, category])
+
 
   // Arriving from the command palette opens that item straight away.
   useEffect(() => {
@@ -154,98 +177,143 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
             <span>{notice}</span>
           </div>
         )}
-        <div className="relative">
-          <ListFilter className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={meta.filterPlaceholder}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label={meta.filterPlaceholder}
-            className="h-10 pl-9"
-          />
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {categories.map((c) => (
+        <FilterInput placeholder={meta.filterPlaceholder} value={search} onChange={setSearch} />
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            onClick={() => setCategory('All')}
+            className={cn(
+              'focus-ring rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+              category === 'All'
+                ? 'border-primary/50 bg-accent text-accent-foreground'
+                : 'border-border bg-card text-muted-foreground hover:bg-elevated hover:text-foreground'
+            )}
+          >
+            All {items.length}
+          </button>
+          {visibleCategories.map(([name, count]) => (
             <button
-              key={c}
-              onClick={() => setCategory(c)}
+              key={name}
+              onClick={() => setCategory(name)}
               className={cn(
                 'focus-ring rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                category === c
+                category === name
                   ? 'border-primary/50 bg-accent text-accent-foreground'
                   : 'border-border bg-card text-muted-foreground hover:bg-elevated hover:text-foreground'
               )}
             >
-              {c}
+              {name} <span className="text-muted-foreground">{count}</span>
             </button>
           ))}
+          {hiddenCategoryCount > 0 && (
+            <button
+              onClick={() => setShowAllCategories(true)}
+              className="focus-ring rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              +{hiddenCategoryCount} more
+            </button>
+          )}
+          {showAllCategories && categories.length > TOP_CATEGORIES && (
+            <button
+              onClick={() => setShowAllCategories(false)}
+              className="focus-ring rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Show fewer
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-10">
+      <div className="grid min-h-0 flex-1 auto-rows-min content-start gap-4 overflow-y-auto pb-10 sm:grid-cols-2 xl:grid-cols-3">
         {isLoading && items.length === 0
-          ? Array.from({ length: 4 }, (_, i) => (
+          ? Array.from({ length: 6 }, (_, i) => (
               <div
                 key={i}
-                className="surface-raised flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5"
+                className="surface-raised flex flex-col gap-3 rounded-2xl border border-border bg-card p-5"
               >
-                <Skeleton className="size-8 shrink-0 rounded-md" />
-                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                  <Skeleton className="h-3.5 w-32" />
-                  <Skeleton className="h-3 w-full max-w-md" />
+                <div className="flex gap-3.5">
+                  <Skeleton className="size-11 shrink-0 rounded-xl" />
+                  <div className="flex flex-1 flex-col gap-2">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
                 </div>
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-4/5" />
               </div>
             ))
-          : filtered.map((item, index) => {
-              const row = (
-                <button
-                  onClick={() => openDetail(item)}
-                  className="focus-ring surface-raised flex w-full items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5 text-left transition-colors hover:bg-elevated"
+          : visible.map((item, index) => {
+              const color = itemColor(item.id, item.title)
+              const isInstalled = installedIds.includes(item.id)
+              const card = (
+                <motion.div
+                  whileHover={prefersReducedMotion ? undefined : { y: -3 }}
+                  transition={SPRING.snappy}
+                  className="group flex w-full"
                 >
-                  <GlyphTile icon={Icon} />
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm font-medium text-foreground">{item.title}</span>
-                    <span className="truncate text-xs text-muted-foreground">{item.description}</span>
-                    <span className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {item.metaTags.map((t) => (
-                        <MetaTag key={t}>{t}</MetaTag>
-                      ))}
-                    </span>
-                    <ToolCompat
-                      toolIds={item.compatibleTools}
-                      detectedToolIds={detectedToolIds}
-                      variant="inline"
-                      className="mt-1.5"
-                    />
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    {installedIds.includes(item.id) && (
-                      <Badge className="bg-success text-success-foreground">Installed</Badge>
-                    )}
-                    {item.verified && (
-                      <Badge className="gap-1 bg-accent text-accent-foreground">
-                        <ShieldCheck className="size-3" /> Verified
-                      </Badge>
-                    )}
-                    {item.warnings.length > 0 && (
-                      <span title={item.warnings.join(' · ')}>
-                        <TriangleAlert className="size-4 text-destructive" />
+                  <button
+                    onClick={() => openDetail(item)}
+                    aria-label={`${item.title} — ${item.description}`}
+                    className="focus-ring surface-raised relative flex h-full w-full flex-col gap-3 overflow-hidden rounded-2xl border border-border p-5 text-left transition-[box-shadow,border-color] duration-200 hover:surface-lifted"
+                    style={{ background: itemBloom(color, 7) }}
+                  >
+                    <span className="relative flex items-start gap-3.5">
+                      <span
+                        className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border/60"
+                        style={{ background: itemWash(color, 22), color }}
+                      >
+                        <Icon className="size-5" />
                       </span>
-                    )}
-                  </span>
-                </button>
+                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <span className="truncate font-heading text-[1.05rem] font-semibold leading-tight text-foreground">
+                            {item.title}
+                          </span>
+                          {item.verified && <ShieldCheck className="size-3.5 shrink-0 text-primary" />}
+                        </span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {item.author ?? item.category}
+                        </span>
+                      </span>
+                      {isInstalled && (
+                        <span className="shrink-0 rounded-full bg-success px-2 py-0.5 text-[11px] font-medium text-success-foreground">
+                          Installed
+                        </span>
+                      )}
+                    </span>
+
+                    <p className="relative line-clamp-2 text-[0.875rem] leading-relaxed text-muted-foreground">
+                      {item.description}
+                    </p>
+
+                    <span className="relative mt-auto flex items-center gap-2 pt-1">
+                      <ToolCompat
+                        toolIds={item.compatibleTools}
+                        detectedToolIds={detectedToolIds}
+                        variant="inline"
+                        showLabel={false}
+                      />
+                      {item.warnings.length > 0 && (
+                        <TriangleAlert className="ml-auto size-4 shrink-0 text-destructive" />
+                      )}
+                    </span>
+                  </button>
+                </motion.div>
               )
-              return index < 12 ? (
-                <BlurFade key={item.id} direction="up" duration={0.2} delay={index * 0.02}>
-                  {row}
-                </BlurFade>
-              ) : (
-                <div key={item.id}>{row}</div>
+              return (
+                <motion.div
+                  key={item.id}
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ ...SPRING.standard, delay: staggerDelay(index) }}
+                  className="flex"
+                >
+                  {card}
+                </motion.div>
               )
             })}
 
         {!isLoading && filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
+          <div className="col-span-full flex flex-col items-center justify-center gap-2 py-16 text-center">
             <GlyphTile icon={Icon} size={40} />
             {items.length === 0 ? (
               <>
@@ -260,7 +328,20 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
                 </p>
               </>
             )}
-          </div>
+    
+        {visible.length < filtered.length && (
+          <button
+            type="button"
+            onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+            className="focus-ring surface-raised col-span-full mx-auto flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-elevated"
+          >
+            Show more
+            <span className="text-muted-foreground">
+              {visible.length} of {filtered.length}
+            </span>
+          </button>
+        )}
+      </div>
         )}
       </div>
 
@@ -285,18 +366,18 @@ export function CatalogView(props: CatalogViewProps): React.JSX.Element {
 
               <div className="grid grid-cols-2 gap-4 rounded-lg border border-border bg-card/60 p-4">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Category</span>
+                  <span className="text-[11px] font-medium text-muted-foreground">Category</span>
                   <span className="font-mono text-xs text-foreground">{detail.category}</span>
                 </div>
                 {detail.author && (
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Author</span>
+                    <span className="text-[11px] font-medium text-muted-foreground">Author</span>
                     <span className="font-mono text-xs text-foreground">{detail.author}</span>
                   </div>
                 )}
                 {detail.source && (
                   <div className="col-span-2 flex flex-col gap-0.5">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                    <span className="text-[11px] font-medium text-muted-foreground">
                       {detail.sourceLabel ?? 'Source'}
                     </span>
                     <span className="break-all font-mono text-xs text-foreground">{detail.source}</span>

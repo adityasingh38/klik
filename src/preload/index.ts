@@ -1,12 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
   ClientInfo,
-  GetServersResult,
   InstallPreview,
   InstallRequest,
   InstallStepResult,
   InstalledServerRecord,
-  PreflightRequest
+  PreflightRequest,
+  ServerPage,
+  ServerQuery,
+  MergedServerEntry
 } from '../shared/types'
 import type {
   DetectedTool,
@@ -15,11 +17,13 @@ import type {
   PluginInstallRequest,
   PluginInstallStepResult,
   PluginPreflightRequest,
+  SkillEntry,
   SkillInstallPreview,
   SkillInstallRequest,
   SkillInstallStepResult,
   SkillPreflightRequest
 } from '../shared/catalog'
+import type { Preferences } from '../shared/prefs'
 
 interface InstalledPluginInfo {
   id: string
@@ -35,7 +39,11 @@ const klikApi = {
    */
   platform: process.platform as NodeJS.Platform,
 
-  getServers: (): Promise<GetServersResult> => ipcRenderer.invoke('klik:getServers'),
+  getFeatured: (ids: string[]): Promise<ServerPage> => ipcRenderer.invoke('klik:getFeatured', ids),
+  queryServers: (query: ServerQuery): Promise<ServerPage> => ipcRenderer.invoke('klik:queryServers', query),
+  serverCategories: (): Promise<Array<{ name: string; count: number }>> =>
+    ipcRenderer.invoke('klik:serverCategories'),
+  findServer: (id: string): Promise<MergedServerEntry | null> => ipcRenderer.invoke('klik:findServer', id),
   getClients: (): Promise<ClientInfo[]> => ipcRenderer.invoke('klik:getClients'),
   getInstalled: (): Promise<InstalledServerRecord[]> => ipcRenderer.invoke('klik:getInstalled'),
   preflight: (request: PreflightRequest): Promise<InstallPreview> => ipcRenderer.invoke('klik:preflight', request),
@@ -43,6 +51,7 @@ const klikApi = {
   uninstall: (serverId: string): Promise<void> => ipcRenderer.invoke('klik:uninstall', serverId),
 
   getTools: (): Promise<DetectedTool[]> => ipcRenderer.invoke('klik:getTools'),
+  getSkills: (bundled: SkillEntry[]): Promise<SkillEntry[]> => ipcRenderer.invoke('klik:getSkills', bundled),
   getInstalledSkills: (): Promise<InstalledSkillRecord[]> => ipcRenderer.invoke('klik:getInstalledSkills'),
   skillPreflight: (request: SkillPreflightRequest): Promise<SkillInstallPreview> =>
     ipcRenderer.invoke('klik:skillPreflight', request),
@@ -56,7 +65,11 @@ const klikApi = {
   installPlugin: (request: PluginInstallRequest): Promise<PluginInstallStepResult[]> =>
     ipcRenderer.invoke('klik:installPlugin', request),
   uninstallPlugin: (pluginId: string): Promise<PluginInstallStepResult[]> =>
-    ipcRenderer.invoke('klik:uninstallPlugin', pluginId)
+    ipcRenderer.invoke('klik:uninstallPlugin', pluginId),
+
+  getPrefs: (): Promise<Preferences> => ipcRenderer.invoke('klik:getPrefs'),
+  setPrefs: (next: Partial<Preferences>): Promise<Preferences> =>
+    ipcRenderer.invoke('klik:setPrefs', next)
 }
 
 export type KlikApi = typeof klikApi

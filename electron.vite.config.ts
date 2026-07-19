@@ -23,6 +23,22 @@ export default defineConfig({
     define: {
       __APP_VERSION__: JSON.stringify(version)
     },
-    plugins: [react(), tailwindcss()]
+    plugins: [react(), tailwindcss()],
+    build: {
+      rollupOptions: {
+        output: {
+          /**
+           * Split the vendors that dominate the bundle so the shell isn't blocked on
+           * parsing all of them, and so a dependency bump doesn't invalidate the whole
+           * cache. Measured before splitting: one 1.62 MB chunk.
+           */
+          manualChunks: {
+            react: ['react', 'react-dom'],
+            motion: ['motion'],
+            icons: ['lucide-react']
+          }
+        }
+      }
+    }
   }
 })
