@@ -12,9 +12,13 @@
   </defs>
 
   <rect width="512" height="512" rx="114" fill="url(#tile)"/>
-  <rect x="1.5" y="1.5" width="509" height="509" rx="112.5" fill="none" stroke="#43C9A6" stroke-opacity=".16" stroke-width="3"/>
 
-  <g transform="translate(96 96) scale(10)">
+  <!--
+    No border. A hairline at 512 becomes a heavy ring by the time Windows draws the
+    icon at 32px, and it read as the logo rather than as an edge. The blocks are the
+    mark, so they carry the tile on their own.
+  -->
+  <g transform="translate(72 72) scale(11.5)">
     <!-- Anchored quadrants -->
     <path d="M4 8a4 4 0 0 1 4-4h7v10a2 2 0 0 1-2 2H4V8Z" fill="#43C9A6"/>
     <path d="M17 16h11v8a4 4 0 0 1-4 4h-7V16Z" fill="#43C9A6"/>
