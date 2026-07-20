@@ -15,8 +15,6 @@ Nothing is written to your machine until you confirm. Every install shows the ex
 will run, the files it will edit, any secrets that get stored, and what the server will have access
 to.
 
-![Klik's review-before-installing dialog](docs/preview.png)
-
 ## Why
 
 Installing an MCP server today usually means: finding the right package name, hand-editing a client's config file, guessing at the right `command`/`args` shape, providing any required API keys, and restarting the client to find out if it worked. Multiply that by every server you want and every client you use.
