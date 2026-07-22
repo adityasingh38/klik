@@ -3,11 +3,12 @@
 [![CI](https://github.com/adityasingh38/klik/actions/workflows/ci.yml/badge.svg)](https://github.com/adityasingh38/klik/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**One-click MCP server installer for Windows.**
+**Equip your AI tools, without editing a single config file.**
 
-Browse the [Model Context Protocol](https://modelcontextprotocol.io) registry, pick the servers you
-want, and install them straight into Claude Desktop, Cursor, or VS Code. No manual JSON config
-editing, no restarting five times to see if you got the syntax right.
+Klik installs [Model Context Protocol](https://modelcontextprotocol.io) servers, agent skills and
+plugins into the AI tools you already use — Claude Desktop, Claude Code, Cursor, VS Code and more.
+Browse, pick, confirm. No manual JSON editing, no restarting five times to see if you got the
+syntax right.
 
 ![Klik browsing the MCP server catalogue](docs/screenshot.png)
 
@@ -17,32 +18,49 @@ to.
 
 ## Why
 
-Installing an MCP server today usually means: finding the right package name, hand-editing a client's config file, guessing at the right `command`/`args` shape, providing any required API keys, and restarting the client to find out if it worked. Multiply that by every server you want and every client you use.
+Installing an MCP server by hand means: finding the right package name, editing a client's config file, guessing at the right `command`/`args` shape, supplying any required API keys, and restarting the client to find out if it worked. Multiply that by every server you want and every tool you use.
 
 Klik turns that into: search, check a box, click install.
 
+## What you can install
+
+- **MCP servers** — 15,000+ from the official registry, ranked so the significant ones surface first, with a curated set verified by hand.
+- **Skills** — on-demand capabilities your AI loads when a task needs them, discovered across several public marketplaces rather than a hand-written list.
+- **Plugins** — bundles of commands, agents, hooks, skills and MCP servers, installed through Claude Code's own CLI.
+
 ## Features
 
-- **Live registry browsing.** Pulls from the official MCP registry, with instant load from a local cache while it refreshes in the background.
-- **Multi-client install.** Install the same server into Claude Desktop, Cursor, and VS Code in one pass.
+- **Honest compatibility.** Each item shows which tools can actually accept it, derived from how it works rather than guessed — a stdio server won't claim to run in a remote-only client.
+- **Multi-tool install.** Install the same server into several tools in one pass.
 - **Secret prompting.** If a server needs an API key or other required env var, Klik asks for it inline before installing, instead of failing silently at runtime.
-- **Clean uninstall.** Remove a server from a client without hand-editing config files.
-- **Curated overlay.** A small curation layer marks trusted servers as "Verified" on top of the raw registry data.
-- **Offline-friendly.** A local cache means the server list is usable even without a fresh network round-trip every launch.
+- **Clean uninstall.** Remove something from a tool without hand-editing config files.
+- **Offline-friendly.** A local cache means the catalogue is usable without a fresh network round-trip every launch.
+- **Light and dark**, both designed rather than inverted.
 
 ## Install
 
 Download the latest installer from the [Releases](../../releases) page and run it. Klik installs to your machine like any normal Windows app. No admin rights, no terminal required.
 
-## Supported clients
+The installer is not yet code-signed, so Windows SmartScreen will warn you the first time you
+run it — choose **More info → Run anyway**. See the [code signing policy](docs/code-signing-policy.md)
+for how signed builds are produced and what the signature does and doesn't tell you.
 
-| Client | Status |
-|---|---|
-| Claude Desktop | ✅ |
-| Cursor | ✅ |
-| VS Code | ✅ |
+## Supported tools
+
+These are the tools Klik can install **into**:
+
+| Tool | MCP servers | Skills | Plugins |
+|---|---|---|---|
+| Claude Desktop | ✅ | | |
+| Cursor | ✅ | | |
+| VS Code | ✅ | | |
+| Claude Code | | ✅ | ✅ |
 
 Klik detects which of these are actually installed on your machine and only lets you target the ones that are.
+
+Cards also show badges for tools Klik **doesn't** install into — Windsurf, Zed, Cline, ChatGPT. Those say
+"this server will work there," which is a fact about the server, not a promise that Klik can set it up for
+you. The two are deliberately kept distinct.
 
 ## Development
 
