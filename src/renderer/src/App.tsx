@@ -358,12 +358,6 @@ function AppShell(): React.JSX.Element {
                 {meta.subtitle}
               </span>
             </div>
-            {fromCache && section === 'mcp' && (
-              <span className="no-drag ml-1 flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-2 py-0.5 text-[10px] text-muted-foreground">
-                <span className="size-1.5 animate-pulse rounded-full bg-primary" />
-                cached
-              </span>
-            )}
             <div className="ml-auto flex items-center gap-0.5">
             {/* Deliberately an icon button, not a bordered pill: a search-shaped box
                 sitting directly above each catalog's filter box read as two search

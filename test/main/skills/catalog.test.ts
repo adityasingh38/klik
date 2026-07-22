@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { parseFrontmatter, summarise, skillPathsFromTree } from '../../../src/main/skills/catalog'
+import {
+  parseFrontmatter,
+  summarise,
+  skillPathsFromTree,
+  shouldReplaceCatalog
+} from '../../../src/main/skills/catalog'
 
 describe('parseFrontmatter', () => {
   it('reads name and description out of a SKILL.md head', () => {
@@ -75,5 +80,36 @@ describe('skillPathsFromTree', () => {
 
   it('ignores files that merely mention SKILL.md and unsafe paths', () => {
     expect(skillPathsFromTree(['docs/about-SKILL.md.txt', 'a/../../etc/SKILL.md'])).toHaveLength(0)
+  })
+})
+
+describe('shouldReplaceCatalog', () => {
+  const skills = (n: number): unknown[] => Array.from({ length: n }, (_, i) => ({ id: `s${i}` }))
+  const fetch = (n: number, failedSources = 0): never =>
+    ({ skills: skills(n), failedSources }) as never
+
+  it('trusts a complete fetch, even when the catalogue shrank legitimately', () => {
+    expect(shouldReplaceCatalog(204, fetch(190))).toBe(true)
+  })
+
+  it('accepts a partial fetch that is still at least as complete as the cache', () => {
+    expect(shouldReplaceCatalog(204, fetch(210, 1))).toBe(true)
+  })
+
+  it('refuses a partial fetch that collapsed the catalogue', () => {
+    // The case seen in practice: three of four sources rate-limited, 12 of 204 returned.
+    expect(shouldReplaceCatalog(204, fetch(12, 3))).toBe(false)
+  })
+
+  it('refuses an empty fetch rather than emptying the catalogue', () => {
+    expect(shouldReplaceCatalog(204, fetch(0, 4))).toBe(false)
+  })
+
+  it('accepts a complete fetch when there was nothing cached', () => {
+    expect(shouldReplaceCatalog(0, fetch(12))).toBe(true)
+  })
+
+  it('accepts a partial fetch when there was nothing cached — something beats nothing', () => {
+    expect(shouldReplaceCatalog(0, fetch(12, 2))).toBe(true)
   })
 })

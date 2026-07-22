@@ -286,15 +286,28 @@ interface CachedCatalog {
   skills: SkillEntry[]
 }
 
-export function readSkillCatalogCache(userDataDir: string): SkillEntry[] | null {
+export interface CachedCatalogRead {
+  skills: SkillEntry[]
+  /** Past its TTL: still worth serving, but a refresh should be attempted. */
+  stale: boolean
+}
+
+/**
+ * The cached catalogue, and whether it is past its TTL.
+ *
+ * Age used to be disqualifying: an expired cache was discarded and a live fetch had to
+ * supply the whole catalogue before anything could render. That traded 204 slightly old
+ * skills for however many a single cold, rate-limited fetch happened to return. Age is
+ * now reported rather than acted on, and the caller decides.
+ */
+export function readSkillCatalogCache(userDataDir: string): CachedCatalogRead | null {
   const path = skillCatalogCachePath(userDataDir)
   if (!existsSync(path)) return null
   try {
     const parsed = JSON.parse(readFileSync(path, 'utf-8')) as CachedCatalog
     if (parsed.version !== CATALOG_VERSION) return null
     if (!Array.isArray(parsed.skills) || parsed.skills.length === 0) return null
-    if (Date.now() - parsed.fetchedAt > CACHE_TTL_MS) return null
-    return parsed.skills
+    return { skills: parsed.skills, stale: Date.now() - parsed.fetchedAt > CACHE_TTL_MS }
   } catch {
     return null
   }
@@ -317,9 +330,16 @@ function writeCache(userDataDir: string, skills: SkillEntry[]): void {
  * Failure is never fatal — a source that won't resolve is skipped, and if nothing
  * resolves at all the caller keeps whatever it already had.
  */
+export interface SkillCatalogFetch {
+  skills: SkillEntry[]
+  /** Sources that returned nothing. A complete fetch has none. */
+  failedSources: number
+  totalSources: number
+}
+
 export async function fetchSkillCatalog(
   sources: SkillSource[] = DEFAULT_SKILL_SOURCES
-): Promise<SkillEntry[]> {
+): Promise<SkillCatalogFetch> {
   const perSource = await Promise.all(
     sources.map(async (source) => {
       try {
@@ -337,36 +357,82 @@ export async function fetchSkillCatalog(
   )
 
   const seen = new Set<string>()
-  return perSource.flat().filter((entry) => {
+  const skills = perSource.flat().filter((entry) => {
     if (seen.has(entry.id)) return false
     seen.add(entry.id)
     return true
   })
+
+  return {
+    skills,
+    failedSources: perSource.filter((entries) => entries.length === 0).length,
+    totalSources: sources.length
+  }
 }
 
 /**
- * The catalogue the UI gets: cache first so the list is instant, refreshed in the
- * background for next launch. `bundled` is the copy shipped in the app, used until a
- * fetch has ever succeeded.
+ * Whether a fetched catalogue should be persisted over what is already cached.
+ *
+ * Sources fail silently — one that won't resolve contributes an empty list rather than
+ * throwing — so a fetch that reached one of four repositories is indistinguishable, by
+ * length alone, from a genuinely small catalogue. GitHub rate limiting makes that an
+ * ordinary afternoon rather than a rare failure, and writing such a result replaces a
+ * full catalogue with a fraction of itself until the next successful refresh.
+ *
+ * A fetch is therefore trusted only when every source answered. A partial fetch may
+ * still be shown when there is nothing else to show, but it does not become the
+ * remembered truth.
+ */
+export function shouldReplaceCatalog(
+  cachedCount: number,
+  fetch: Pick<SkillCatalogFetch, 'skills' | 'failedSources'>
+): boolean {
+  if (fetch.skills.length === 0) return false
+  if (fetch.failedSources > 0) return fetch.skills.length >= cachedCount
+  return true
+}
+
+/**
+ * The catalogue the UI gets: whatever is cached is served immediately, and a refresh
+ * runs behind it. `bundled` is the copy shipped in the app, used until a fetch has ever
+ * succeeded.
+ *
+ * An expired cache is still served rather than discarded — stale entries beat an empty
+ * list, and beat whichever fraction a cold rate-limited fetch happens to return.
  */
 export async function loadSkillCatalog(
   userDataDir: string,
   bundled: SkillEntry[]
 ): Promise<SkillEntry[]> {
   const cached = readSkillCatalogCache(userDataDir)
+
+  // Anything cached is served now and refreshed behind the interface, stale or not.
+  // Waiting on the network here would hold the real catalogue behind a fetch while the
+  // list showed the small bundled copy — the user watches 12 skills become 204 seconds
+  // later, having already had 204 on disk the whole time.
   if (cached) {
-    void fetchSkillCatalog()
-      .then((fresh) => {
-        if (fresh.length > 0) writeCache(userDataDir, fresh)
-      })
-      .catch(() => {})
-    return cached
+    void refreshInBackground(userDataDir, cached.skills.length)
+    return cached.skills
   }
 
-  const fetched = await fetchSkillCatalog().catch(() => [])
-  if (fetched.length > 0) {
-    writeCache(userDataDir, fetched)
-    return fetched
+  // Nothing cached: this fetch is the only thing standing between the user and an empty
+  // list, so it is worth waiting for even if some sources fail.
+  const fetched = await fetchSkillCatalog().catch(
+    (): SkillCatalogFetch => ({ skills: [], failedSources: 0, totalSources: 0 })
+  )
+
+  if (shouldReplaceCatalog(0, fetched)) {
+    writeCache(userDataDir, fetched.skills)
+    return fetched.skills
   }
   return bundled
+}
+
+/** Refreshes for the next launch without holding up this one. */
+function refreshInBackground(userDataDir: string, cachedCount: number): Promise<void> {
+  return fetchSkillCatalog()
+    .then((fresh) => {
+      if (shouldReplaceCatalog(cachedCount, fresh)) writeCache(userDataDir, fresh.skills)
+    })
+    .catch(() => {})
 }
