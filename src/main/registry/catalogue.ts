@@ -17,7 +17,13 @@ let catalogue: MergedServerEntry[] | null = null
 let building: Promise<MergedServerEntry[]> | null = null
 
 async function build(userDataDir: string, resourcesDir: string): Promise<MergedServerEntry[]> {
+  const started = Date.now()
+  const mark = (stage: string): void => {
+    if (process.env.KLIK_PERF) console.log(`[perf] catalogue:${stage} ${Date.now() - started}`)
+  }
+
   const cached = readCache(userDataDir)
+  mark('readCache')
   // Both read from disk now, so nothing here waits on the network.
   const curation = loadCuration(resourcesDir, userDataDir)
   const seed = loadSeedServers(resourcesDir, userDataDir)
@@ -25,7 +31,11 @@ async function build(userDataDir: string, resourcesDir: string): Promise<MergedS
   if (cached) {
     // Serve what's on disk now; refresh in the background for next launch.
     void loadRegistry(userDataDir).catch(() => {})
-    return rankServers(mergeSeedServers(mergeCuration(cached, curation), seed))
+    const merged = mergeSeedServers(mergeCuration(cached, curation), seed)
+    mark('merged')
+    const ranked = rankServers(merged)
+    mark('ranked')
+    return ranked
   }
 
   const { entries } = await loadRegistry(userDataDir)
@@ -104,19 +114,44 @@ export async function serverCategories(
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
 }
 
-/** The handful of servers the wall opens on, plus the totals the shell needs. */
+/**
+ * The handful of servers the wall opens on, plus the totals the shell needs.
+ *
+ * This is the first screen, so it deliberately avoids building the full catalogue.
+ * Every featured server is one Klik curates itself, and that list is a small file
+ * already on disk — merging fifteen thousand registry entries and ranking them costs
+ * about 390 ms of blocked main thread, and the wall shows nine cards that ranking never
+ * touches. The count beside "MCP Servers" does need the cache, but reading it is the
+ * cheap third of that work.
+ *
+ * The full catalogue still gets built, in the background, so the first browse or search
+ * finds it ready.
+ */
 export async function getFeatured(
   userDataDir: string,
   resourcesDir: string,
   ids: string[]
 ): Promise<ServerPage> {
-  const all = await getCatalogue(userDataDir, resourcesDir)
-  const byId = new Map(all.map((s) => [s.id, s]))
+  const seed = loadSeedServers(resourcesDir, userDataDir)
+  const curated = mergeSeedServers([], seed)
+  const byId = new Map(curated.map((s) => [s.id, s]))
   const picked = ids.map((id) => byId.get(id)).filter((s): s is MergedServerEntry => Boolean(s))
 
-  // Curation may not have loaded on a cold start; fall back to the ranking so the
-  // wall is never empty.
-  const servers = picked.length >= 6 ? picked : all.slice(0, 9)
+  if (picked.length >= 6) {
+    const cached = readCache(userDataDir)
+    const catalogueTotal = cached
+      ? cached.length + curated.filter((s) => !cached.some((c) => c.id === s.id)).length
+      : curated.length
+
+    // Warm the full catalogue for the first browse, without holding this call up.
+    void getCatalogue(userDataDir, resourcesDir).catch(() => {})
+    return { servers: picked, total: picked.length, catalogueTotal }
+  }
+
+  // Curation didn't cover enough of the wall — fall back to the ranking so it is never
+  // empty, and pay for the full build to do it.
+  const all = await getCatalogue(userDataDir, resourcesDir)
+  const servers = all.slice(0, 9)
   return { servers, total: servers.length, catalogueTotal: all.length }
 }
 
