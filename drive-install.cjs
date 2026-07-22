@@ -138,6 +138,13 @@ function check(name, passed, detail) {
 
   check('kept the pre-existing server', Boolean(servers['pre-existing']))
   check('wrote a new server entry', added.length > 0, added.join(', ') || 'nothing added')
+  // The key is a display name in the client's own connector list, so it has to read like
+  // one — not like the reverse-DNS registry id it is derived from.
+  check(
+    'filed it under a readable name, not the registry id',
+    added[0] === 'sequential-thinking',
+    added[0]
+  )
 
   if (added.length > 0) {
     const entry = servers[added[0]]

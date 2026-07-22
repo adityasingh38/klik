@@ -129,6 +129,13 @@ export interface InstalledServerRecord {
   serverId: string
   clients: ClientId[]
   installedAt: string
+  /**
+   * The name this server was filed under in each client's config. Recorded rather than
+   * re-derived so an uninstall removes what was actually written, even if the key
+   * derivation changes later. Absent on records written before Klik used slugs — those
+   * were filed under the raw serverId.
+   */
+  configKey?: string
 }
 
 export interface GetServersResult {

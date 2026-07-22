@@ -105,7 +105,7 @@ describe('installServer', () => {
     expect(wingetInstall).toHaveBeenCalledWith('Some.Package')
     expect(results).toEqual([{ serverId: 'ai.example/foo', clientId: 'claude-desktop', status: 'done' }])
     expect(adapter.readConfig()).toMatchObject({
-      'ai.example/foo': { command: 'npx', args: ['-y', 'foo@1.0.0'], env: { FOO_KEY: 'secret-value' } }
+      foo: { command: 'npx', args: ['-y', 'foo@1.0.0'], env: { FOO_KEY: 'secret-value' } }
     })
   })
 
@@ -128,7 +128,7 @@ describe('installServer', () => {
     expect(wingetInstall).not.toHaveBeenCalled()
     expect(results[0]).toMatchObject({ status: 'done' })
     expect(results[0].message).toMatch(/Node/)
-    expect(adapter.readConfig()).toMatchObject({ 'ai.example/foo': { command: 'npx' } })
+    expect(adapter.readConfig()).toMatchObject({ foo: { command: 'npx' } })
   })
 
   it('records a successful install in local state', async () => {
@@ -146,7 +146,14 @@ describe('installServer', () => {
     })
 
     const state = JSON.parse(readFileSync(statePath(tmpDir), 'utf-8'))
-    expect(state).toEqual([{ serverId: 'ai.example/foo', clients: ['claude-desktop'], installedAt: '2026-07-13T00:00:00.000Z' }])
+    expect(state).toEqual([
+      {
+        serverId: 'ai.example/foo',
+        clients: ['claude-desktop'],
+        installedAt: '2026-07-13T00:00:00.000Z',
+        configKey: 'foo'
+      }
+    ])
   })
 
   it('reports an error for a target client that is not installed, without blocking other clients', async () => {
@@ -295,7 +302,7 @@ describe('installServer', () => {
     expect(results[0].message).toMatch(/docker/i)
     expect(results[0].message).toMatch(/not installed/i)
     expect(adapter.readConfig()).toMatchObject({
-      'ai.example/foo': { command: 'npx', args: ['-y', 'foo@1.0.0'], env: { FOO_KEY: 'secret-value' } }
+      foo: { command: 'npx', args: ['-y', 'foo@1.0.0'], env: { FOO_KEY: 'secret-value' } }
     })
   })
 
@@ -364,6 +371,36 @@ describe('uninstallServer', () => {
     expect(cursorAdapter.readConfig()).toEqual({})
     const state = JSON.parse(readFileSync(statePath(tmpDir), 'utf-8'))
     expect(state).toEqual([])
+  })
+
+  it('removes a server installed by an older Klik, which filed it under the raw id', () => {
+    // Records written before slugs carry no configKey, and the config entry is the id.
+    const adapter = fakeAdapter('claude-desktop')
+    adapter.writeServer('ai.example/foo', { command: 'npx', args: ['-y', 'foo@1.0.0'] })
+    recordInstall(tmpDir, 'ai.example/foo', ['claude-desktop'], '2026-07-13T00:00:00.000Z')
+
+    uninstallServer('ai.example/foo', {
+      adaptersById: { 'claude-desktop': adapter } as any,
+      userDataDir: tmpDir
+    })
+
+    expect(adapter.readConfig()).toEqual({})
+  })
+
+  it('removes the slug it actually wrote, not one re-derived at uninstall time', () => {
+    const adapter = fakeAdapter('claude-desktop')
+    // A collision pushed this install to a qualified key.
+    adapter.writeServer('example-foo', { command: 'npx', args: ['-y', 'foo@1.0.0'] })
+    adapter.writeServer('foo', { command: 'other', args: [] })
+    recordInstall(tmpDir, 'ai.example/foo', ['claude-desktop'], '2026-07-13T00:00:00.000Z', 'example-foo')
+
+    uninstallServer('ai.example/foo', {
+      adaptersById: { 'claude-desktop': adapter } as any,
+      userDataDir: tmpDir
+    })
+
+    // The unrelated server that happened to hold the short name is left alone.
+    expect(adapter.readConfig()).toEqual({ foo: { command: 'other', args: [] } })
   })
 
   it('skips a client that is no longer installed without throwing, and still clears state', () => {

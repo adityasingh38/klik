@@ -2,6 +2,7 @@ import type { ClientAdapter, McpServerConfigEntry } from '../clients/types'
 import { isRuntimeAvailable, wingetPackageId } from '../deps/depCheck'
 import { wingetInstall } from '../deps/winget'
 import { listInstalled, recordInstall, recordUninstall } from './state'
+import { configKeyFor } from '../../shared/configKey'
 import type { ClientId, InstallRequest, InstallStepResult } from '../../shared/types'
 
 export interface InstallerDeps {
@@ -87,6 +88,23 @@ export async function installServer(request: InstallRequest, deps: InstallerDeps
       ? `Installed, but requires ${unmetRuntimeWarnings.map((r) => r[0].toUpperCase() + r.slice(1)).join(', ')} which ${unmetRuntimeWarnings.length > 1 ? 'are' : 'is'} not installed — install ${unmetRuntimeWarnings.length > 1 ? 'them' : 'it'} manually for this server to run.`
       : undefined
 
+  // One key for every target, chosen against the names already present in each config —
+  // including servers the user added by hand, which Klik has no record of.
+  const taken = new Set<string>()
+  for (const clientId of request.targetClients) {
+    const adapter = deps.adaptersById[clientId]
+    if (!adapter?.isInstalled()) continue
+    try {
+      for (const name of Object.keys(adapter.readConfig())) {
+        // A previous install of this same server is not a collision with itself.
+        if (name !== request.server.id) taken.add(name)
+      }
+    } catch {
+      // An unreadable config fails later, with a message about that config.
+    }
+  }
+  const configKey = configKeyFor(request.server.id, taken)
+
   for (const clientId of request.targetClients) {
     const adapter = deps.adaptersById[clientId]
     if (!adapter || !adapter.isInstalled()) {
@@ -103,7 +121,10 @@ export async function installServer(request: InstallRequest, deps: InstallerDeps
       continue
     }
     try {
-      adapter.writeServer(request.server.id, entry)
+      // Older versions filed servers under the raw registry id; drop that entry so a
+      // re-install moves the server rather than leaving a duplicate behind.
+      if (configKey !== request.server.id) adapter.removeServer(request.server.id)
+      adapter.writeServer(configKey, entry)
       results.push({
         serverId: request.server.id,
         clientId,
@@ -122,7 +143,7 @@ export async function installServer(request: InstallRequest, deps: InstallerDeps
   }
 
   if (succeededClients.length > 0) {
-    recordInstall(deps.userDataDir, request.server.id, succeededClients, deps.now())
+    recordInstall(deps.userDataDir, request.server.id, succeededClients, deps.now(), configKey)
   }
 
   return results
@@ -135,6 +156,9 @@ export function uninstallServer(serverId: string, deps: Pick<InstallerDeps, 'ada
   for (const clientId of record.clients) {
     const adapter = deps.adaptersById[clientId]
     if (!adapter || !adapter.isInstalled()) continue
+    // Remove the recorded key, and the raw id as well: records written before Klik used
+    // slugs carry no key, and a user who installed then may still have that entry.
+    if (record.configKey) adapter.removeServer(record.configKey)
     adapter.removeServer(serverId)
   }
 

@@ -30,10 +30,11 @@ export function recordInstall(
   userDataDir: string,
   serverId: string,
   clients: ClientId[],
-  installedAt: string
+  installedAt: string,
+  configKey?: string
 ): void {
   const records = readState(userDataDir).filter((r) => r.serverId !== serverId)
-  records.push({ serverId, clients, installedAt })
+  records.push({ serverId, clients, installedAt, ...(configKey ? { configKey } : {}) })
   writeState(userDataDir, records)
 }
 
